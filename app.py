@@ -679,9 +679,11 @@ def seed_data():
     db.session.commit()
     print("Database seeding completed successfully!")
 
+# Create database tables and seed initial data on application startup/import
+with app.app_context():
+    db.create_all()
+    seed_data()
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        seed_data()
-    # Run server
+    # Run server locally
     app.run(debug=True, port=5000)
