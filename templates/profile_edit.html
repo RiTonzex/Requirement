@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}แก้ไขข้อมูลช่าง - Worker Control Panel{% endblock %}
+
+{% block content %}
+<div class="container animate-fade-in">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="custom-card shadow">
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+                    <div>
+                        <h2 class="h3 text-white mb-1"><i class="bi bi-gear-fill text-primary me-2"></i>จัดการข้อมูลโปรไฟล์ช่าง</h2>
+                        <p class="text-muted mb-0">แก้ไขข้อมูลความเชี่ยวชาญ ประสบการณ์ และพื้นที่ให้บริการของคุณ</p>
+                    </div>
+                    <a href="{{ url_for('worker_detail', worker_id=worker.id) }}" class="btn btn-outline-custom btn-sm">
+                        <i class="bi bi-eye-fill me-1"></i> ดูหน้าโปรไฟล์สาธารณะ
+                    </a>
+                </div>
+
+                <form action="{{ url_for('profile_edit') }}" method="POST">
+                    
+                    <!-- Basic Information Section -->
+                    <h5 class="text-white mb-3 fw-bold"><i class="bi bi-person-fill text-primary me-1"></i> ข้อมูลส่วนตัวช่าง</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="fullname" class="form-label">ชื่อ-นามสกุลจริง <span class="text-danger">*</span></label>
+                            <input type="text" name="fullname" id="fullname" class="form-control" value="{{ worker.user.fullname }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="phone" class="form-label">เบอร์โทรศัพท์ติดต่อ <span class="text-danger">*</span></label>
+                            <input type="tel" name="phone" id="phone" class="form-control" value="{{ worker.user.phone or '' }}" placeholder="เช่น 0891234567" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="experience" class="form-label">ปีประสบการณ์การทำงาน (ปี)</label>
+                            <input type="number" name="experience" id="experience" class="form-control" value="{{ worker.experience }}" min="0" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="starting_price" class="form-label">ราคาเริ่มต้นการให้บริการ (บาท)</label>
+                            <input type="number" name="starting_price" id="starting_price" class="form-control" value="{{ worker.starting_price }}" min="0" step="10" required>
+                        </div>
+                        
+                        <!-- Toggle is_available -->
+                        <div class="col-12 mt-4">
+                            <div class="form-check form-switch p-3 rounded bg-dark border border-secondary">
+                                <input class="form-check-input ms-0 me-3" type="checkbox" role="switch" name="is_available" id="is_available" {% if worker.is_available %}checked{% endif %}>
+                                <label class="form-check-label text-white fw-bold" for="is_available">
+                                    <i class="bi bi-circle-fill text-success me-1"></i> เปิดสถานะพร้อมรับงาน (Available)
+                                </label>
+                                <span class="d-block text-muted small mt-1 ps-5">หากคุณปิดสวิตช์นี้ รายชื่อของคุณจะไม่ปรากฏในผลลัพธ์การค้นหาของลูกค้า</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bio Section -->
+                    <h5 class="text-white mb-3 fw-bold"><i class="bi bi-info-circle text-primary me-1"></i> ประวัติ/รายละเอียดการทำงานเพิ่มเติม</h5>
+                    <div class="mb-4">
+                        <label for="bio" class="form-label">แนะนำตัวเองสั้นๆ หรือรายละเอียดขอบเขตการทำงาน</label>
+                        <textarea name="bio" id="bio" rows="5" class="form-control" placeholder="ระบุรายละเอียดเกี่ยวกับการทำงานของคุณ ช่องทางติดต่อเฉพาะ ฯลฯ เพื่อประกอบการตัดสินใจของลูกค้า">{{ worker.bio or '' }}</textarea>
+                    </div>
+
+                    <!-- Skills Section (Many-to-Many) -->
+                    <h5 class="text-white mb-3 fw-bold"><i class="bi bi-tools text-primary me-1"></i> เลือกทักษะความชำนาญของคุณ (เลือกได้หลายทักษะ)</h5>
+                    <div class="row g-3 mb-4">
+                        {% for cat in categories %}
+                            <div class="col-md-6">
+                                <div class="checkbox-grid-card">
+                                    <div class="checkbox-grid-title">{{ cat.name }}</div>
+                                    {% for skill in cat.skills %}
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" name="skills" value="{{ skill.id }}" id="skill_{{ skill.id }}" {% if skill.id in worker_skill_ids %}checked{% endif %}>
+                                            <label class="form-check-label text-muted small" for="skill_{{ skill.id }}">
+                                                {{ skill.name }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Service Areas Section (Many-to-Many Provinces) -->
+                    <h5 class="text-white mb-3 fw-bold"><i class="bi bi-geo-alt-fill text-secondary me-1"></i> พื้นที่จังหวัดที่คุณยินดีเดินทางไปให้บริการ (เลือกได้หลายจังหวัด)</h5>
+                    <div class="row g-3 mb-4">
+                        {% for region, prov_list in provinces_by_region.items() %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="checkbox-grid-card">
+                                    <div class="checkbox-grid-title">{{ region }}</div>
+                                    {% for prov in prov_list %}
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" name="provinces" value="{{ prov.id }}" id="prov_{{ prov.id }}" {% if prov.id in worker_province_ids %}checked{% endif %}>
+                                            <label class="form-check-label text-muted small" for="prov_{{ prov.id }}">
+                                                {{ prov.name }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="border-top border-secondary pt-3 mt-4 text-end">
+                        <button type="submit" class="btn btn-primary px-4 py-2.5">
+                            <i class="bi bi-save-fill me-1"></i> บันทึกการเปลี่ยนแปลงทั้งหมด
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

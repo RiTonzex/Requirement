@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}ผลการค้นหาช่าง - Local Worker Directory{% endblock %}
+
+{% block content %}
+<div class="container animate-fade-in">
+    <div class="row">
+        <!-- Sidebar filters -->
+        <div class="col-lg-3 mb-4">
+            <div class="custom-card">
+                <h4 class="h5 text-white mb-3"><i class="bi bi-funnel-fill me-2 text-primary"></i>ตัวกรองการค้นหา</h4>
+                <form action="{{ url_for('search_results') }}" method="GET">
+                    
+                    <!-- Skill Select -->
+                    <div class="mb-3">
+                        <label for="skill_id" class="form-label small text-muted">ประเภททักษะ/บริการ</label>
+                        <select name="skill_id" id="skill_id" class="form-select select-sm">
+                            <option value="">-- บริการทั้งหมด --</option>
+                            {% for cat in categories %}
+                                <optgroup label="{{ cat.name }}">
+                                    {% for skill in cat.skills %}
+                                        <option value="{{ skill.id }}" {% if skill.id == skill_id %}selected{% endif %}>{{ skill.name }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Province Select -->
+                    <div class="mb-3">
+                        <label for="province_id" class="form-label small text-muted">จังหวัดที่ให้บริการ</label>
+                        <select name="province_id" id="province_id" class="form-select select-sm">
+                            <option value="">-- จังหวัดทั้งหมด --</option>
+                            {% for region, prov_list in provinces_by_region.items() %}
+                                <optgroup label="{{ region }}">
+                                    {% for prov in prov_list %}
+                                        <option value="{{ prov.id }}" {% if prov.id == province_id %}selected{% endif %}>{{ prov.name }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Hidden sort value to preserve sorting during filter update -->
+                    <input type="hidden" name="sort_by" value="{{ sort_by }}">
+
+                    <button type="submit" class="btn btn-primary w-100 mt-2">
+                        <i class="bi bi-filter me-1"></i> อัปเดตการกรอง
+                    </button>
+                    
+                    {% if skill_id or province_id %}
+                        <a href="{{ url_for('search_results') }}" class="btn btn-outline-custom w-100 mt-2 text-center text-decoration-none d-block">
+                            <i class="bi bi-x-circle me-1"></i> ล้างการกรอง
+                        </a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+
+        <!-- Search Results Grid -->
+        <div class="col-lg-9">
+            <!-- Header with Results Info & Sorting -->
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-4">
+                <div>
+                    <h2 class="h4 text-white mb-1">
+                        {% if selected_skill or selected_province %}
+                            ผลการค้นหาช่าง: 
+                            {% if selected_skill %}<span class="text-primary">{{ selected_skill.name }}</span>{% endif %}
+                            {% if selected_province %} ในพื้นที่ <span class="text-secondary">{{ selected_province.name }}</span>{% endif %}
+                        {% else %}
+                            ช่างฝีมือดีทั้งหมด
+                        {% endif %}
+                    </h2>
+                    <p class="text-muted mb-0">พบช่างที่พร้อมรับงานทั้งหมด {{ results|length }} คน</p>
+                </div>
+                
+                <!-- Sort Select -->
+                <div class="mt-3 mt-sm-0 d-flex align-items-center">
+                    <label for="sort_select" class="text-muted small me-2 text-nowrap">เรียงลำดับตาม:</label>
+                    <select id="sort_select" class="form-select form-select-sm border-secondary bg-dark text-white" onchange="changeSort(this.value)">
+                        <option value="rating_desc" {% if sort_by == 'rating_desc' %}selected{% endif %}>คะแนนรีวิวสูงสุด</option>
+                        <option value="reviews_desc" {% if sort_by == 'reviews_desc' %}selected{% endif %}>จำนวนรีวิวมากที่สุด</option>
+                        <option value="experience_desc" {% if sort_by == 'experience_desc' %}selected{% endif %}>ช่างผู้เชี่ยวชาญ (ปีประสบการณ์)</option>
+                        <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>ราคาเริ่มต้นต่ำสุด</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- List of Workers -->
+            <div class="row g-4">
+                {% if results %}
+                    {% for worker, avg_rating, review_count in results %}
+                        <div class="col-md-6 animate-fade-in">
+                            <div class="custom-card">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h3 class="h5 mb-1 text-white">{{ worker.user.fullname }}</h3>
+                                        <div class="small text-muted mb-1"><i class="bi bi-briefcase me-1"></i>ประสบการณ์ {{ worker.experience }} ปี</div>
+                                        <span class="badge bg-success small"><i class="bi-circle-fill me-1" style="font-size: 0.5rem;"></i> พร้อมรับงาน</span>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="star-rating">
+                                            {% if review_count > 0 %}
+                                                {% for i in range(1, 6) %}
+                                                    {% if avg_rating >= i %}
+                                                        <i class="bi bi-star-fill"></i>
+                                                    {% elif avg_rating >= i - 0.5 %}
+                                                        <i class="bi bi-star-half"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-star"></i>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                <div class="small text-muted mt-1">{{ avg_rating | round(1) }} ({{ review_count }} รีวิว)</div>
+                                            {% else %}
+                                                <span class="text-muted small">ยังไม่มีรีวิว</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p class="text-muted small flex-grow-1 mb-3">
+                                    {{ worker.bio[:140] }}{% if worker.bio and worker.bio|length > 140 %}...{% endif %}
+                                </p>
+
+                                <div class="mb-3">
+                                    <h6 class="small text-muted mb-1">ทักษะ:</h6>
+                                    <div>
+                                        {% for skill in worker.skills %}
+                                            <span class="badge-custom">{{ skill.name }}</span>
+                                        {% else %}
+                                            <span class="text-muted small">ไม่มีข้อมูลทักษะ</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <h6 class="small text-muted mb-1">พื้นที่ให้บริการ:</h6>
+                                    <div>
+                                        {% for prov in worker.service_areas %}
+                                            <span class="badge-location">{{ prov.name }}</span>
+                                        {% else %}
+                                            <span class="text-muted small">ให้บริการทั่วประเทศ</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="border-top border-secondary pt-3 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="text-muted small d-block">ราคาเริ่มต้น</span>
+                                        <span class="text-white fw-bold">฿{{ "{:,.2f}".format(worker.starting_price) }}</span>
+                                    </div>
+                                    <a href="{{ url_for('worker_detail', worker_id=worker.id) }}" class="btn btn-primary btn-sm px-3">
+                                        ดูโปรไฟล์ & รีวิว
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="col-12 text-center py-5">
+                        <i class="bi bi-search text-muted display-3 mb-3 d-block"></i>
+                        <h4 class="text-white">ไม่พบข้อมูลช่างตามเงื่อนไขที่เลือก</h4>
+                        <p class="text-muted">กรุณาลองปรับเปลี่ยนตัวกรอง หรือค้นหาในหมวดหมู่บริการอื่น</p>
+                        <a href="{{ url_for('search_results') }}" class="btn btn-outline-custom mt-2">ดูช่างทั้งหมด</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function changeSort(val) {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('sort_by', val);
+        window.location.search = urlParams.toString();
+    }
+</script>
+{% endblock %}

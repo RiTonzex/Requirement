@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}สมัครสมาชิก - Local Worker Directory{% endblock %}
+
+{% block content %}
+<div class="container animate-fade-in">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <div class="custom-card shadow">
+                <div class="text-center mb-4">
+                    <i class="bi bi-person-plus-fill text-primary display-4 mb-2 d-block"></i>
+                    <h2 class="h3 text-white fw-bold">สมัครสมาชิกใหม่</h2>
+                    <p class="text-muted">เข้าร่วมเครือข่ายค้นหาช่างประจำท้องถิ่น</p>
+                </div>
+
+                <form action="{{ url_for('register') }}" method="POST">
+                    <!-- Role Selection -->
+                    <div class="mb-4">
+                        <label class="form-label d-block text-muted small mb-2"><i class="bi bi-person-badge-fill me-1"></i> ประเภทสมาชิก <span class="text-danger">*</span></label>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="role" id="role_user" value="user" checked autocomplete="off">
+                                <label class="btn btn-outline-custom w-100 py-3 d-flex flex-column align-items-center" for="role_user">
+                                    <i class="bi bi-people-fill fs-3 mb-1"></i>
+                                    <span>สมาชิกทั่วไป</span>
+                                    <span class="text-muted small" style="font-size: 0.7rem;">ค้นหาช่างและเขียนรีวิว</span>
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="role" id="role_worker" value="worker" autocomplete="off">
+                                <label class="btn btn-outline-custom w-100 py-3 d-flex flex-column align-items-center" for="role_worker">
+                                    <i class="bi bi-tools fs-3 mb-1"></i>
+                                    <span>ช่างเทคนิค / บริการ</span>
+                                    <span class="text-muted small" style="font-size: 0.7rem;">ลงทะเบียนรับงานในพื้นที่</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Username -->
+                    <div class="mb-3">
+                        <label for="username" class="form-label"><i class="bi bi-person-fill text-muted me-1"></i> ชื่อผู้ใช้ (Username) <span class="text-danger">*</span></label>
+                        <input type="text" name="username" id="username" class="form-control" placeholder="ใช้สำหรับเข้าสู่ระบบ" required>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="mb-3">
+                        <label for="password" class="form-label"><i class="bi bi-key-fill text-muted me-1"></i> รหัสผ่าน (Password) <span class="text-danger">*</span></label>
+                        <input type="password" name="password" id="password" class="form-control" placeholder="อย่างน้อย 6 ตัวอักษร" required minlength="6">
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label"><i class="bi bi-shield-lock-fill text-muted me-1"></i> ยืนยันรหัสผ่าน (Confirm Password) <span class="text-danger">*</span></label>
+                        <input type="password" name="confirm_password" id="confirm_password" class="form-control" placeholder="กรอกรหัสผ่านอีกครั้งให้ตรงกัน" required minlength="6">
+                    </div>
+
+                    <!-- Full Name -->
+                    <div class="mb-3">
+                        <label for="fullname" class="form-label"><i class="bi bi-card-text text-muted me-1"></i> ชื่อ-นามสกุลจริง <span class="text-danger">*</span></label>
+                        <input type="text" name="fullname" id="fullname" class="form-control" placeholder="เช่น นายสมบูรณ์ ปลอดภัย" required>
+                    </div>
+
+                    <!-- Phone -->
+                    <div class="mb-3">
+                        <label for="phone" class="form-label"><i class="bi bi-telephone-fill text-muted me-1"></i> เบอร์โทรศัพท์ติดต่อ</label>
+                        <input type="tel" name="phone" id="phone" class="form-control" placeholder="เช่น 0891234567">
+                    </div>
+
+                    <!-- Submit -->
+                    <button type="submit" class="btn btn-primary w-100 py-2.5 mt-3">
+                        <i class="bi bi-check-circle-fill me-1"></i> ยืนยันการสมัครสมาชิก
+                    </button>
+                </form>
+
+                <div class="border-top border-secondary mt-4 pt-3 text-center">
+                    <p class="text-muted mb-0 small">เป็นสมาชิกอยู่แล้วใช่หรือไม่? <a href="{{ url_for('login') }}" class="text-primary text-decoration-none fw-bold">เข้าสู่ระบบที่นี่</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

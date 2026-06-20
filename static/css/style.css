@@ -1,0 +1,439 @@
+/* Core Custom Styling for Local Worker Directory - Light Blue-White Theme */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --primary: #1e40af;          /* Rich Indigo-Blue */
+    --primary-hover: #1d4ed8;    /* Royal Blue */
+    --secondary: #0284c7;        /* Light Ocean Blue */
+    --bg-light: #f8fafc;         /* Crisp Light Gray-Blue */
+    --bg-card: #ffffff;          /* Pure White Card */
+    --text-main: #0f172a;        /* Deep Charcoal for maximum contrast */
+    --text-muted: #334155;       /* Slate Gray for readability */
+    --border-color: #cbd5e1;     /* Soft slate border */
+    --accent: #eab308;           /* Gold stars */
+    --accent-rgb: 234, 179, 8;
+}
+
+body {
+    font-family: 'Outfit', 'Sarabun', sans-serif;
+    background-color: var(--bg-light);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+/* Header & Navbar styling */
+.navbar {
+    background-color: #ffffff !important;
+    border-bottom: 2px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.navbar-light .navbar-nav .nav-link {
+    color: #475569 !important;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    transition: color 0.2s ease;
+}
+
+.navbar-light .navbar-nav .nav-link:hover,
+.navbar-light .navbar-nav .nav-link.active {
+    color: var(--primary) !important;
+}
+
+/* Base Layout elements */
+main {
+    flex: 1 0 auto;
+}
+
+.footer {
+    background-color: #ffffff;
+    border-top: 2px solid #e2e8f0;
+    color: var(--text-muted);
+    padding: 2rem 0;
+    margin-top: 3rem;
+}
+
+/* Hero Section */
+.hero-section {
+    background: radial-gradient(circle at top right, rgba(30, 64, 175, 0.08), transparent),
+                radial-gradient(circle at bottom left, rgba(2, 132, 199, 0.08), transparent);
+    padding: 5rem 0 3.5rem 0;
+    text-align: center;
+}
+
+.hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #1e3a8a 30%, #0284c7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    max-width: 650px;
+    margin: 0 auto 2.5rem auto;
+}
+
+/* Premium Card Styles (White-Blue Theme) */
+.custom-card {
+    background-color: var(--bg-card);
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.75rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.custom-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.custom-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px -10px rgba(30, 64, 175, 0.2);
+    border-color: rgba(30, 64, 175, 0.3);
+}
+
+.custom-card:hover::before {
+    opacity: 1;
+}
+
+/* Search Area Style */
+.search-container {
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 24px;
+    padding: 2.5rem;
+    box-shadow: 0 10px 30px rgba(30, 64, 175, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.search-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px rgba(30, 64, 175, 0.12);
+}
+
+/* Form Controls styling (Vibrant Blue on Focus) */
+.form-label {
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.form-control, .form-select {
+    background-color: #ffffff !important;
+    border: 2px solid #cbd5e1 !important;
+    color: var(--text-main) !important;
+    border-radius: 10px !important;
+    padding: 0.8rem 1rem !important;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.15) !important;
+    background-color: #ffffff !important;
+}
+
+/* Advanced select styling & animations */
+.form-select {
+    cursor: pointer;
+}
+
+.form-select optgroup {
+    font-weight: 700;
+    color: var(--primary);
+    background-color: #f1f5f9;
+    padding: 0.5rem;
+}
+
+.form-select option {
+    font-weight: 500;
+    color: var(--text-main);
+    background-color: #ffffff;
+    padding: 0.5rem;
+}
+
+/* Custom Buttons */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 0.8rem 1.5rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    transition: all 0.25s ease !important;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1.5px);
+    box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3) !important;
+}
+
+.btn-outline-custom {
+    color: var(--text-main) !important;
+    background: #ffffff !important;
+    border: 2px solid #cbd5e1 !important;
+    border-radius: 10px !important;
+    padding: 0.8rem 1.5rem !important;
+    font-weight: 700 !important;
+    transition: all 0.25s ease !important;
+}
+
+.btn-outline-custom:hover {
+    background: rgba(30, 64, 175, 0.05) !important;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+}
+
+.btn-outline-custom.text-white {
+    color: #475569 !important;
+}
+.btn-outline-custom.text-white:hover {
+    color: var(--primary) !important;
+}
+
+/* Star rating styles */
+.star-rating {
+    color: var(--accent);
+}
+
+.star-rating-interactive {
+    direction: rtl;
+    display: inline-block;
+}
+
+.star-rating-interactive input {
+    display: none;
+}
+
+.star-rating-interactive label {
+    font-size: 2.2rem;
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: color 0.15s ease-in-out;
+}
+
+.star-rating-interactive label:hover,
+.star-rating-interactive label:hover ~ label,
+.star-rating-interactive input:checked ~ label {
+    color: var(--accent);
+}
+
+/* Badges for skills & provinces */
+.badge-custom {
+    background: rgba(30, 64, 175, 0.08);
+    color: var(--primary);
+    border: 1px solid rgba(30, 64, 175, 0.2);
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-right: 0.4rem;
+    margin-bottom: 0.4rem;
+    display: inline-block;
+}
+
+.badge-location {
+    background: rgba(2, 132, 199, 0.08);
+    color: #0369a1;
+    border: 1px solid rgba(2, 132, 199, 0.2);
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-right: 0.4rem;
+    margin-bottom: 0.4rem;
+    display: inline-block;
+}
+
+/* Switch styling */
+.form-check-input:checked {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+/* Alerts custom */
+.alert {
+    border-radius: 12px !important;
+    border: 2px solid transparent !important;
+}
+
+.alert-success {
+    background-color: #ecfdf5 !important;
+    border-color: #a7f3d0 !important;
+    color: #065f46 !important;
+}
+
+.alert-danger {
+    background-color: #fef2f2 !important;
+    border-color: #fecaca !important;
+    color: #991b1b !important;
+}
+
+.alert-warning {
+    background-color: #fffbeb !important;
+    border-color: #fde68a !important;
+    color: #92400e !important;
+}
+
+.alert-info {
+    background-color: #eff6ff !important;
+    border-color: #bfdbfe !important;
+    color: #1e40af !important;
+}
+
+/* Checkbox and radio grid */
+.checkbox-grid-card {
+    background: #ffffff;
+    border: 2px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 1.25rem;
+    height: 100%;
+}
+
+.checkbox-grid-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.5rem;
+}
+
+/* Inner containers with background */
+.bg-dark {
+    background-color: #f1f5f9 !important;
+    border: 2px solid #cbd5e1 !important;
+    color: var(--text-main) !important;
+}
+
+.border-secondary {
+    border-color: #e2e8f0 !important;
+}
+
+.dropdown-menu {
+    background-color: #ffffff !important;
+    border: 2px solid #e2e8f0 !important;
+}
+
+.dropdown-menu .dropdown-item {
+    color: var(--text-main) !important;
+    font-weight: 500;
+}
+
+.dropdown-menu .dropdown-item:hover {
+    background-color: #f1f5f9 !important;
+    color: var(--primary) !important;
+}
+
+/* Form switch modifications */
+.form-switch .form-check-input {
+    border-color: #cbd5e1 !important;
+    width: 2.5em !important;
+    height: 1.25em !important;
+}
+
+/* High Contrast readability overrides */
+.text-white {
+    color: var(--text-main) !important;
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* List group style overrides */
+.list-group-item {
+    border-color: #e2e8f0 !important;
+}
+
+/* Micro-animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+
+/* Responsive Design / Media Queries for Mobile Readability */
+@media (max-width: 991.98px) {
+    .hero-title {
+        font-size: 2.25rem;
+    }
+    .search-container {
+        padding: 2rem 1.5rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .hero-section {
+        padding: 3.5rem 0 2.25rem 0;
+    }
+    .hero-title {
+        font-size: 2rem;
+    }
+    .hero-subtitle {
+        font-size: 1.05rem;
+        margin-bottom: 1.75rem;
+    }
+    .search-container {
+        padding: 1.5rem 1.25rem;
+        border-radius: 16px;
+    }
+    .custom-card {
+        padding: 1.25rem;
+        border-radius: 12px;
+    }
+    .checkbox-grid-card {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .hero-title {
+        font-size: 1.75rem;
+    }
+    .star-rating-interactive label {
+        font-size: 1.8rem;
+    }
+}
+
