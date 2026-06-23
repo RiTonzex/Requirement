@@ -8,24 +8,29 @@ from sqlalchemy.engine import Engine
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'local-worker-directory-secret-key-12345'
+app.secret_key = os.environ.get('SECRET_KEY', 'local-worker-directory-secret-key-12345')
+
+# Session Cookie Security Settings
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+if not app.debug:
+    app.config['SESSION_COOKIE_SECURE'] = True
 
 # Database configuration
-# If running on Vercel serverless, use the writable /tmp folder for SQLite (100% Free & No Setup)
-if os.environ.get('VERCEL'):
-    db_path = '/tmp/database.db'
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+database_url = os.environ.get('DATABASE_URL')
+if database_url:
+    # Adjust postgres protocol for SQLAlchemy compatibility
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    database_url = os.environ.get('DATABASE_URL')
-    if database_url:
-        # Adjust postgres protocol for SQLAlchemy compatibility
-        if database_url.startswith("postgres://"):
-            database_url = database_url.replace("postgres://", "postgresql://", 1)
-        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    # Fallback to SQLite (use /tmp on Vercel as it's the only writable folder)
+    if os.environ.get('VERCEL'):
+        db_path = '/tmp/database.db'
     else:
         db_path = os.path.join(app.instance_path, 'database.db')
         os.makedirs(app.instance_path, exist_ok=True)
-        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -63,9 +68,9 @@ class User(db.Model):
     phone = db.Column(db.String(20), nullable=True)
     
     # 1:1 relationship with Worker (only populated if role == 'worker')
-    worker = db.relationship('Worker', backref='user', uselist=False, cascade="all, delete-orphan")
+    worker = db.relationship('Worker', backref=db.backref('user', foreign_keys='Worker.id'), uselist=False, cascade="all, delete-orphan", foreign_keys='Worker.id')
     # 1:Many relationship with Review (reviews written by this user)
-    reviews = db.relationship('Review', backref='user', cascade="all, delete-orphan")
+    reviews = db.relationship('Review', backref=db.backref('user', foreign_keys='Review.user_id'), cascade="all, delete-orphan", foreign_keys='Review.user_id')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -86,7 +91,7 @@ class Worker(db.Model):
     # Many-to-Many Relationship with Province (service areas)
     service_areas = db.relationship('Province', secondary=worker_service_areas, backref=db.backref('workers', lazy='dynamic'))
     # 1:Many Relationship with Review (reviews received by this worker)
-    reviews_received = db.relationship('Review', backref='worker', cascade="all, delete-orphan")
+    reviews_received = db.relationship('Review', backref=db.backref('worker', foreign_keys='Review.worker_id'), cascade="all, delete-orphan", foreign_keys='Review.worker_id')
 
 class SkillCategory(db.Model):
     __tablename__ = 'skill_category'
@@ -521,9 +526,15 @@ def seed_data():
 
     # 3. Add Dummy Users and Workers
     # Dummy admin
-    admin = User(username="admin", fullname="ผู้ดูแลระบบสูงสุด", role="admin", phone="020000000")
-    admin.set_password("admin123")
-    db.session.add(admin)
+    admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
+    admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
+    
+    # Check if admin already exists
+    admin_exists = User.query.filter_by(role='admin').first()
+    if not admin_exists:
+        admin = User(username=admin_username, fullname="ผู้ดูแลระบบสูงสุด", role="admin", phone="020000000")
+        admin.set_password(admin_password)
+        db.session.add(admin)
     
     # Worker 1: Somchai
     w1_user = User(username="somchai", fullname="นายสมชาย บริการดี", role="worker", phone="0812345678")

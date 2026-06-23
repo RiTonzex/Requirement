@@ -120,6 +120,43 @@
 
     <!-- Bootstrap 5 Bundle with Popper JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Frontend Security: Prevent F12, Right-Click, and standard source inspection shortcuts -->
+    <script>
+        // Disable context menu (right click)
+        document.addEventListener('contextmenu', function (e) {
+            e.preventDefault();
+        });
+
+        // Intercept keyboard events to block DevTools and Inspect Source shortcuts
+        document.addEventListener('keydown', function (e) {
+            // Block F12
+            if (e.keyCode === 123 || e.key === 'F12') {
+                e.preventDefault();
+                return false;
+            }
+            // Block Ctrl+Shift+I (Chrome, Firefox, Edge Inspector)
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) {
+                e.preventDefault();
+                return false;
+            }
+            // Block Ctrl+Shift+J (Chrome, Firefox, Edge Console)
+            if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) {
+                e.preventDefault();
+                return false;
+            }
+            // Block Ctrl+Shift+C (Inspect Element selection tool)
+            if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) {
+                e.preventDefault();
+                return false;
+            }
+            // Block Ctrl+U (View Page Source)
+            if (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 
