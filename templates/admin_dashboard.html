@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+
+{% block title %}แดชบอร์ดแอดมิน - Local Worker Directory{% endblock %}
+
+{% block content %}
+<div class="container animate-fade-in">
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 border-bottom border-secondary pb-3">
+        <div>
+            <h1 class="h3 text-white fw-bold mb-1"><i class="bi bi-speedometer2 text-primary me-2"></i>แดชบอร์ดผู้ดูแลระบบ</h1>
+            <p class="text-muted mb-0">ยินดีต้อนรับแอดมิน! จัดการข้อมูลผู้ใช้ ช่างบริการ และระบบเรื่องร้องเรียนของสมาชิกได้ที่นี่</p>
+        </div>
+        <div class="mt-2 mt-md-0">
+            <span class="badge bg-primary px-3 py-2"><i class="bi bi-shield-lock-fill me-1"></i> ระดับการเข้าถึงสูงสุด (Super Admin)</span>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <!-- Card 1: Complaints -->
+        <div class="col-md-3">
+            <div class="p-3 rounded bg-dark border border-danger text-center h-100 shadow-sm transition-all hover-translate">
+                <i class="bi bi-shield-fill-exclamation text-danger display-6 mb-2 d-block"></i>
+                <span class="text-muted d-block small fw-bold uppercase">เรื่องร้องเรียนทั้งหมด</span>
+                <span class="text-danger h2 fw-bold">{{ total_complaints }}</span>
+            </div>
+        </div>
+        <!-- Card 2: Workers -->
+        <div class="col-md-3">
+            <div class="p-3 rounded bg-dark border border-secondary text-center h-100 shadow-sm transition-all hover-translate">
+                <i class="bi bi-tools text-primary display-6 mb-2 d-block"></i>
+                <span class="text-muted d-block small fw-bold uppercase">ช่างในระบบ</span>
+                <span class="text-primary h2 fw-bold">{{ total_workers }}</span>
+            </div>
+        </div>
+        <!-- Card 3: Users -->
+        <div class="col-md-3">
+            <div class="p-3 rounded bg-dark border border-secondary text-center h-100 shadow-sm transition-all hover-translate">
+                <i class="bi bi-people-fill text-secondary display-6 mb-2 d-block"></i>
+                <span class="text-muted d-block small fw-bold uppercase">สมาชิกธรรมดา</span>
+                <span class="text-secondary h2 fw-bold">{{ total_users }}</span>
+            </div>
+        </div>
+        <!-- Card 4: Reviews -->
+        <div class="col-md-3">
+            <div class="p-3 rounded bg-dark border border-secondary text-center h-100 shadow-sm transition-all hover-translate">
+                <i class="bi bi-star-fill text-warning display-6 mb-2 d-block"></i>
+                <span class="text-muted d-block small fw-bold uppercase">รีวิวสะสม</span>
+                <span class="text-warning h2 fw-bold">{{ total_reviews }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Section 1: Complaints Table -->
+        <div class="col-lg-5">
+            <div class="custom-card mb-4">
+                <div class="border-bottom border-secondary pb-3 mb-3 d-flex justify-content-between align-items-center">
+                    <h4 class="h5 text-white mb-0"><i class="bi bi-exclamation-octagon-fill text-danger me-2"></i>รายการเรื่องร้องเรียน</h4>
+                    <span class="badge bg-danger rounded-pill">{{ complaints|length }} เรื่อง</span>
+                </div>
+
+                {% if complaints %}
+                    <div class="list-group list-group-flush overflow-auto" style="max-height: 800px;">
+                        {% for c in complaints %}
+                            <div class="list-group-item bg-transparent border-secondary px-0 py-3">
+                                <div class="d-flex flex-column mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <span class="badge bg-danger mb-2">ร้องเรียนช่าง</span>
+                                        <span class="text-muted small"><i class="bi bi-clock me-1"></i> {{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                    </div>
+                                    <span class="badge bg-warning text-dark mb-2 align-self-start"><i class="bi bi-tag-fill me-1"></i> หัวข้อ: {{ c.title }}</span>
+                                    <div class="text-white mt-1">
+                                        <strong>ผู้ร้องเรียน:</strong> {{ c.reporter.fullname }} 
+                                        <span class="text-muted small">(@{{ c.reporter.username }})</span>
+                                    </div>
+                                    <div class="text-white mt-1">
+                                        <strong>ช่างที่โดนร้องเรียน:</strong> 
+                                        <a href="{{ url_for('worker_detail', worker_id=c.worker.id) }}" class="text-primary text-decoration-none fw-bold" target="_blank">
+                                            {{ c.worker.user.fullname }} <i class="bi bi-box-arrow-up-right small"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="bg-dark p-3 rounded border border-secondary text-muted mb-3" style="white-space: pre-wrap;">{{ c.reason }}</div>
+                                
+                                <div class="d-flex gap-2">
+                                    <form action="{{ url_for('delete_worker', worker_id=c.worker.id) }}" method="POST" class="d-inline" onsubmit="return confirm('คำเตือน! คุณกำลังลบบัญชีของช่างรายนี้ออกจากระบบอย่างถาวร (รวมทั้งโปรไฟล์และรีวิวทั้งหมด) ยืนยันใช่หรือไม่?');">
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            <i class="bi bi-trash-fill me-1"></i> ลบช่างออก
+                                        </button>
+                                    </form>
+                                    <form action="{{ url_for('dismiss_complaint', complaint_id=c.id) }}" method="POST" class="d-inline" onsubmit="return confirm('ยืนยันที่จะเพิกเฉย/ลบคำร้องเรียนนี้ใช่หรือไม่?');">
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm text-white">
+                                            <i class="bi bi-check-circle me-1"></i> ยกเลิกเรื่องร้องเรียน
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-check-circle-fill text-success display-4 mb-3 d-block"></i>
+                        <p class="text-muted mb-0">ไม่มีเรื่องร้องเรียนค้างคาในขณะนี้ ทุกอย่างเรียบร้อยดี!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Section 2: Combined Worker and Member Management Panel -->
+        <div class="col-lg-7">
+            <div class="custom-card mb-4">
+                <div class="border-bottom border-secondary pb-3 mb-3">
+                    <h4 class="h5 text-white mb-0"><i class="bi bi-people-fill text-primary me-2"></i>ระบบจัดการผู้ใช้และช่างบริการ</h4>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Column 2.1: Manage Workers -->
+                    <div class="col-md-6 border-end border-secondary border-opacity-50">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="h6 text-white mb-0"><i class="bi bi-tools text-primary me-2"></i>ช่างในระบบ</h5>
+                            <span class="badge bg-primary rounded-pill">{{ workers|length }} คน</span>
+                        </div>
+
+                        <div class="mb-3">
+                            <input type="text" id="workerSearch" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="ค้นหาช่าง..." onkeyup="filterWorkers()">
+                        </div>
+
+                        {% if workers %}
+                            <div class="list-group list-group-flush overflow-auto pe-1" style="max-height: 600px;" id="workerList">
+                                {% for w in workers %}
+                                    <div class="list-group-item bg-transparent border-secondary px-0 py-3 worker-item">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="text-white mb-1 fw-bold worker-name">{{ w.user.fullname }}</h6>
+                                                <span class="text-muted small d-block"><i class="bi bi-telephone me-1"></i> {{ w.user.phone or 'ไม่มีเบอร์ติดต่อ' }}</span>
+                                                <span class="text-muted small d-block"><i class="bi bi-briefcase me-1"></i> ประสบการณ์ {{ w.experience }} ปี</span>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="mb-2">
+                                                    {% if w.is_available %}
+                                                        <span class="badge bg-success small">พร้อมรับงาน</span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger small">งดรับงาน</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="d-flex gap-1 justify-content-end">
+                                                    <a href="{{ url_for('worker_detail', worker_id=w.id) }}" class="btn btn-outline-custom btn-sm px-2 py-1" target="_blank" title="ดูโปรไฟล์">
+                                                        <i class="bi bi-eye-fill"></i>
+                                                    </a>
+                                                    <form action="{{ url_for('delete_worker', worker_id=w.id) }}" method="POST" class="d-inline" onsubmit="return confirm('คำเตือน! คุณกำลังลบบัญชีของช่างรายนี้ออกจากระบบอย่างถาวร (รวมทั้งโปรไฟล์และรีวิวทั้งหมด) ยืนยันใช่หรือไม่?');">
+                                                        <button type="submit" class="btn btn-danger btn-sm px-2 py-1" title="ลบช่าง">
+                                                            <i class="bi bi-trash-fill text-white"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="bi bi-people text-muted display-4 mb-2 d-block"></i>
+                                <p class="text-muted mb-0">ไม่มีรายชื่อช่างในฐานข้อมูล</p>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Column 2.2: Manage Members -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="h6 text-white mb-0"><i class="bi bi-people-fill text-secondary me-2"></i>สมาชิกทั่วไป</h5>
+                            <span class="badge bg-secondary rounded-pill">{{ users|length }} คน</span>
+                        </div>
+
+                        <div class="mb-3">
+                            <input type="text" id="userSearch" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="ค้นหาสมาชิก..." onkeyup="filterUsers()">
+                        </div>
+
+                        {% if users %}
+                            <div class="list-group list-group-flush overflow-auto pe-1" style="max-height: 600px;" id="userList">
+                                {% for u in users %}
+                                    <div class="list-group-item bg-transparent border-secondary px-0 py-3 user-item">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="text-white mb-1 fw-bold user-name">{{ u.fullname }}</h6>
+                                                <span class="text-muted small d-block"><i class="bi bi-person me-1"></i> Username: @{{ u.username }}</span>
+                                                <span class="text-muted small d-block"><i class="bi bi-telephone me-1"></i> {{ u.phone or 'ไม่มีเบอร์ติดต่อ' }}</span>
+                                            </div>
+                                            <div class="text-end">
+                                                <form action="{{ url_for('delete_user', user_id=u.id) }}" method="POST" class="d-inline" onsubmit="return confirm('คำเตือน! คุณกำลังลบและแบนสมาชิก {{ u.fullname }} รายนี้ออกจากระบบอย่างถาวร ยืนยันใช่หรือไม่?');">
+                                                    <button type="submit" class="btn btn-danger btn-sm px-2.5 py-1.5" title="แบนสมาชิก">
+                                                        <i class="bi bi-slash-circle-fill me-1"></i> แบน
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="bi bi-people-fill text-muted display-4 mb-2 d-block"></i>
+                                <p class="text-muted mb-0">ไม่มีรายชื่อสมาชิกธรรมดาในฐานข้อมูล</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filterWorkers() {
+        const input = document.getElementById('workerSearch');
+        const filter = input.value.toLowerCase();
+        const items = document.querySelectorAll('.worker-item');
+
+        items.forEach(function(item) {
+            const name = item.querySelector('.worker-name').textContent.toLowerCase();
+            if (name.includes(filter)) {
+                item.style.display = "";
+            } else {
+                item.style.display = "none";
+            }
+        });
+    }
+
+    function filterUsers() {
+        const input = document.getElementById('userSearch');
+        const filter = input.value.toLowerCase();
+        const items = document.querySelectorAll('.user-item');
+
+        items.forEach(function(item) {
+            const name = item.querySelector('.user-name').textContent.toLowerCase();
+            if (name.includes(filter)) {
+                item.style.display = "";
+            } else {
+                item.style.display = "none";
+            }
+        });
+    }
+</script>
+{% endblock %}

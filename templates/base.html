@@ -57,9 +57,23 @@
                             </span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="userDropdown">
+                            {% if session.get('role') == 'admin' %}
+                            <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}"><i
+                                        class="bi bi-speedometer2 me-2"></i>แดชบอร์ดแอดมิน</a></li>
+                            <li>
+                                <hr class="dropdown-divider border-secondary">
+                            </li>
+                            {% endif %}
                             {% if session.get('role') == 'worker' %}
                             <li><a class="dropdown-item" href="{{ url_for('profile_edit') }}"><i
                                         class="bi bi-pencil-square me-2"></i>จัดการโปรไฟล์ช่าง</a></li>
+                            <li>
+                                <hr class="dropdown-divider border-secondary">
+                            </li>
+                            {% endif %}
+                            {% if session.get('role') == 'user' %}
+                            <li><a class="dropdown-item" href="{{ url_for('report_worker') }}"><i
+                                        class="bi bi-shield-fill-exclamation text-danger me-2"></i>ส่งเรื่องร้องเรียนช่าง</a></li>
                             <li>
                                 <hr class="dropdown-divider border-secondary">
                             </li>

@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}แจ้งเรื่องร้องเรียนช่าง - Local Worker Directory{% endblock %}
+
+{% block content %}
+<div class="container animate-fade-in">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}" class="text-primary text-decoration-none">หน้าแรก</a></li>
+                    <li class="breadcrumb-item active text-white" aria-current="page">แจ้งเรื่องร้องเรียนช่าง</li>
+                </ol>
+            </nav>
+
+            <div class="custom-card shadow-lg border-danger">
+                <!-- Header -->
+                <div class="text-center mb-4 border-bottom border-secondary pb-3">
+                    <i class="bi bi-shield-fill-exclamation text-danger display-4 mb-2 d-block"></i>
+                    <h2 class="h3 text-white fw-bold">รายงาน / ร้องเรียนพฤติกรรมช่าง</h2>
+                    <p class="text-muted small mb-0">โปรดแจ้งข้อมูลเท็จ พฤติกรรมทุจริต หรือเหตุการณ์ไม่ปกติ เพื่อให้แอดมินดำเนินการตรวจสอบอย่างโปร่งใส</p>
+                </div>
+
+                <!-- Form -->
+                <form action="{{ url_for('report_worker') }}" method="POST">
+                    
+                    <!-- Select Worker -->
+                    <div class="mb-3">
+                        <label for="worker_id" class="form-label"><i class="bi bi-person-badge-fill text-muted me-1"></i> เลือกช่างที่ต้องการร้องเรียน <span class="text-danger">*</span></label>
+                        <select name="worker_id" id="worker_id" class="form-select border-danger" required>
+                            <option value="">-- กรุณาเลือกช่างจากรายชื่อทั้งหมด --</option>
+                            {% for w in workers %}
+                                <option value="{{ w.id }}" {% if w.id == selected_worker_id %}selected{% endif %}>{{ w.user.fullname }} (เบอร์ติดต่อ: {{ w.user.phone or 'ไม่ได้ระบุ' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Select Topic -->
+                    <div class="mb-3">
+                        <label for="title" class="form-label"><i class="bi bi-tag-fill text-muted me-1"></i> หัวข้อเรื่องร้องเรียน <span class="text-danger">*</span></label>
+                        <select name="title" id="title" class="form-select border-danger" required>
+                            <option value="">-- กรุณาเลือกหมวดหมู่หัวข้อ --</option>
+                            {% for val, label in topics.items() %}
+                                <option value="{{ val }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Details / Reason -->
+                    <div class="mb-4">
+                        <label for="reason" class="form-label"><i class="bi bi-chat-text-fill text-muted me-1"></i> รายละเอียดพฤติกรรมความเสียหาย <span class="text-danger">*</span></label>
+                        <textarea name="reason" id="reason" rows="6" class="form-control border-danger" placeholder="อธิบายเหตุการณ์หรือพฤติกรรมที่เกิดขึ้นโดยละเอียด (เช่น วันเวลาที่เกิดเรื่อง, ราคาที่โกง, พฤติกรรมที่ไม่สุภาพ เพื่อให้แอดมินใช้เป็นพยานหลักฐานในการตรวจสอบ)..." required></textarea>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="row g-2">
+                        <div class="col-sm-8">
+                            <button type="submit" class="btn btn-danger w-100 py-2.5">
+                                <i class="bi bi-send-fill me-1"></i> ส่งรายงานร้องเรียนช่าง
+                            </button>
+                        </div>
+                        <div class="col-sm-4">
+                            {% if selected_worker_id %}
+                                <a href="{{ url_for('worker_detail', worker_id=selected_worker_id) }}" class="btn btn-outline-custom w-100 py-2.5 text-center text-decoration-none d-block">ยกเลิก</a>
+                            {% else %}
+                                <a href="{{ url_for('index') }}" class="btn btn-outline-custom w-100 py-2.5 text-center text-decoration-none d-block">ยกเลิก</a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

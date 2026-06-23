@@ -127,9 +127,23 @@
                                 <span class="text-muted small d-block">ราคาเริ่มต้น</span>
                                 <span class="text-white fw-bold">฿{{ "{:,.2f}".format(worker.starting_price) }}</span>
                             </div>
-                            <a href="{{ url_for('worker_detail', worker_id=worker.id) }}" class="btn btn-primary btn-sm px-3">
-                                ดูรายละเอียด
-                            </a>
+                            <div class="d-flex gap-2">
+                                {% if session.get('role') == 'admin' %}
+                                    <form action="{{ url_for('delete_worker', worker_id=worker.id) }}" method="POST" class="d-inline" onsubmit="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลช่างคนนี้? การดำเนินการนี้จะลบข้อมูลบัญชีและรีวิวทั้งหมดของช่างคนนี้อย่างถาวร');">
+                                        <button type="submit" class="btn btn-danger btn-sm px-3">
+                                            <i class="bi bi-trash-fill text-white"></i> ลบช่าง
+                                        </button>
+                                    </form>
+                                {% endif %}
+                                {% if session.get('user_id') and worker.user.phone %}
+                                    <a href="tel:{{ worker.user.phone }}" class="btn btn-success btn-sm px-2.5 d-inline-flex align-items-center" title="โทรหาช่าง: {{ worker.user.phone }}">
+                                        <i class="bi bi-telephone-fill"></i>
+                                    </a>
+                                {% endif %}
+                                <a href="{{ url_for('worker_detail', worker_id=worker.id) }}" class="btn btn-primary btn-sm px-3">
+                                    ดูรายละเอียด
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>

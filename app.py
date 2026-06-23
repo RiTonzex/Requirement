@@ -127,6 +127,20 @@ class Review(db.Model):
         UniqueConstraint('user_id', 'worker_id', name='uq_user_worker_review'),
     )
 
+class Complaint(db.Model):
+    __tablename__ = 'complaint'
+    id = db.Column(db.Integer, primary_key=True)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    worker_id = db.Column(db.Integer, db.ForeignKey('worker.id', ondelete='CASCADE'), nullable=False)
+    title = db.Column(db.String(100), nullable=False, default='ร้องเรียนทั่วไป')  # Complaint topic/title
+    reason = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'resolved'
+
+    # Relationships
+    reporter = db.relationship('User', foreign_keys=[reporter_id], backref=db.backref('complaints_filed', cascade="all, delete-orphan"))
+    worker = db.relationship('Worker', foreign_keys=[worker_id], backref=db.backref('complaints_received', cascade="all, delete-orphan"))
+
 # ==========================================
 # CONTEXT PROCESSORS (For templates)
 # ==========================================
@@ -449,11 +463,252 @@ def worker_detail(worker_id):
         has_reviewed=has_reviewed
     )
 
+# 8. Admin Feature: Delete Worker
+@app.route('/admin/delete_worker/<int:worker_id>', methods=['POST'])
+def delete_worker(worker_id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        flash('สิทธิ์เข้าถึงเฉพาะผู้ดูแลระบบเท่านั้น', 'danger')
+        return redirect(url_for('index'))
+        
+    user = User.query.get_or_404(worker_id)
+    if user.role != 'worker':
+        flash('ไม่สามารถลบบัญชีนี้ได้ เนื่องจากไม่ใช่บัญชีช่าง', 'danger')
+        return redirect(url_for('search_results'))
+        
+    try:
+        fullname = user.fullname
+        db.session.delete(user)
+        db.session.commit()
+        flash(f'ลบข้อมูลช่าง {fullname} ออกจากระบบเรียบร้อยแล้ว', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('เกิดข้อผิดพลาดในการลบข้อมูลช่าง', 'danger')
+        
+    referrer = request.referrer
+    if referrer and 'admin/dashboard' in referrer:
+        return redirect(url_for('admin_dashboard'))
+    return redirect(url_for('search_results'))
+
+# 9. User Feature: Report / Complain Worker
+@app.route('/report', methods=['GET', 'POST'])
+def report_worker():
+    if 'user_id' not in session or session.get('role') != 'user':
+        flash('กรุณาเข้าสู่ระบบในฐานะสมาชิกทั่วไปก่อนทำการร้องเรียน', 'warning')
+        return redirect(url_for('login'))
+        
+    if request.method == 'POST':
+        worker_id = request.form.get('worker_id', type=int)
+        title = request.form.get('title', '').strip()
+        reason = request.form.get('reason', '').strip()
+        
+        if not worker_id:
+            flash('กรุณาเลือกช่างที่ต้องการร้องเรียน', 'danger')
+            return redirect(url_for('report_worker'))
+            
+        if not title:
+            flash('กรุณาเลือกหัวข้อเรื่องที่ต้องการร้องเรียน', 'danger')
+            return redirect(url_for('report_worker', worker_id=worker_id))
+            
+        if not reason:
+            flash('กรุณาระบุรายละเอียดพฤติกรรมความเสียหายที่เกิดขึ้น', 'danger')
+            return redirect(url_for('report_worker', worker_id=worker_id))
+            
+        worker = Worker.query.get(worker_id)
+        if not worker:
+            flash('ไม่พบข้อมูลช่างในระบบ', 'danger')
+            return redirect(url_for('report_worker'))
+            
+        try:
+            complaint = Complaint(
+                reporter_id=session['user_id'],
+                worker_id=worker_id,
+                title=title,
+                reason=reason
+            )
+            db.session.add(complaint)
+            db.session.commit()
+            flash('ส่งเรื่องร้องเรียนไปยังผู้ดูแลระบบเรียบร้อยแล้ว ทางระบบจะตรวจสอบอย่างถี่ถ้วนที่สุด', 'success')
+            return redirect(url_for('worker_detail', worker_id=worker_id))
+        except Exception as e:
+            db.session.rollback()
+            flash('เกิดข้อผิดพลาดในการส่งคำร้องเรียน', 'danger')
+            return redirect(url_for('report_worker', worker_id=worker_id))
+            
+    # GET Request
+    selected_worker_id = request.args.get('worker_id', type=int)
+    workers = Worker.query.all()
+    
+    # Predefined complaint categories/topics
+    topics = {
+        "ข้อมูลโปรไฟล์หรือทักษะไม่ตรงตามความเป็นจริง": "ข้อมูลโปรไฟล์หรือทักษะไม่ตรงตามความเป็นจริง",
+        "พฤติกรรมไม่เหมาะสม / แสดงกิริยาวาจาไม่สุภาพ": "พฤติกรรมไม่เหมาะสม / แสดงกิริยาวาจาไม่สุภาพ",
+        "โกงค่าบริการ / เรียกเก็บเงินสูงเกินควรหรือเกินที่ตกลง": "โกงค่าบริการ / เรียกเก็บเงินสูงเกินควรหรือเกินที่ตกลง",
+        "ละทิ้งงาน / ทำงานไม่เสร็จสิ้นตามข้อตกลง": "ละทิ้งงาน / ทำงานไม่เสร็จสิ้นตามข้อตกลง",
+        "พฤติกรรมสุ่มเสี่ยงฉ้อโกง / แอบอ้างเป็นมิจฉาชีพ": "พฤติกรรมสุ่มเสี่ยงฉ้อโกง / แอบอ้างเป็นมิจฉาชีพ",
+        "อื่นๆ (ระบุในรายละเอียดด้านล่าง)": "อื่นๆ (ระบุในรายละเอียดด้านล่าง)"
+    }
+    
+    return render_template(
+        'report.html',
+        workers=workers,
+        selected_worker_id=selected_worker_id,
+        topics=topics
+    )
+
+# 10. Admin Feature: Dashboard Control Panel
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        flash('สิทธิ์การเข้าถึงสำหรับผู้ดูแลระบบเท่านั้น', 'danger')
+        return redirect(url_for('index'))
+        
+    # Stats
+    total_users = User.query.filter_by(role='user').count()
+    total_workers = Worker.query.count()
+    total_reviews = Review.query.count()
+    total_complaints = Complaint.query.count()
+    
+    # Fetch complaints (pending first)
+    complaints = Complaint.query.order_by(Complaint.created_at.desc()).all()
+    # Fetch all workers
+    workers = Worker.query.all()
+    # Fetch all general users (regular members)
+    general_users = User.query.filter_by(role='user').order_by(User.fullname).all()
+    
+    return render_template(
+        'admin_dashboard.html',
+        total_users=total_users,
+        total_workers=total_workers,
+        total_reviews=total_reviews,
+        total_complaints=total_complaints,
+        complaints=complaints,
+        workers=workers,
+        users=general_users
+    )
+
+# 11. Admin Feature: Dismiss Complaint
+@app.route('/admin/dismiss_complaint/<int:complaint_id>', methods=['POST'])
+def dismiss_complaint(complaint_id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        flash('สิทธิ์เฉพาะผู้ดูแลระบบเท่านั้น', 'danger')
+        return redirect(url_for('index'))
+        
+    complaint = Complaint.query.get_or_404(complaint_id)
+    try:
+        db.session.delete(complaint)
+        db.session.commit()
+        flash('ยกเลิก/ลบเรื่องร้องเรียนออกเรียบร้อยแล้ว', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('เกิดข้อผิดพลาดในการลบเรื่องร้องเรียน', 'danger')
+        
+    return redirect(url_for('admin_dashboard'))
+
+# 12. Admin Feature: Delete / Ban User (General Member)
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+def delete_user(user_id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        flash('สิทธิ์เฉพาะผู้ดูแลระบบเท่านั้น', 'danger')
+        return redirect(url_for('index'))
+        
+    user = User.query.get_or_404(user_id)
+    if user.role != 'user':
+        flash('ไม่สามารถลบบัญชีนี้ได้ เนื่องจากไม่ใช่บัญชีสมาชิกทั่วไป', 'danger')
+        return redirect(url_for('admin_dashboard'))
+        
+    try:
+        fullname = user.fullname
+        db.session.delete(user)
+        db.session.commit()
+        flash(f'ลบและแบนสมาชิก {fullname} ออกจากระบบเรียบร้อยแล้ว', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('เกิดข้อผิดพลาดในการลบสมาชิก', 'danger')
+        
+    return redirect(url_for('admin_dashboard'))
+
 # ==========================================
 # SEED DATABASE FUNCTION
 # ==========================================
+def ensure_ten_workers():
+    # Check if preecha (w9) exists
+    preecha = User.query.filter_by(username="preecha").first()
+    if not preecha:
+        try:
+            w9_user = User(username="preecha", fullname="นายปรีชา ไอทีด่วน", role="worker", phone="0890123456")
+            w9_user.set_password("123456")
+            db.session.add(w9_user)
+            db.session.commit()
+            
+            w9 = Worker(
+                id=w9_user.id,
+                experience=4,
+                starting_price=300.0,
+                bio="รับซ่อมคอมพิวเตอร์และโน๊ตบุ๊คทุกอาการ ลงโปรแกรม ล้างเครื่อง กำจัดไวรัส กู้ข้อมูล และให้คำปรึกษาปัญหาไอที บริการทั้งในและนอกสถานที่ รวดเร็ว ราคาประหยัด"
+            )
+            db.session.add(w9)
+            w9.skills.extend(Skill.query.filter(Skill.name.in_(["ช่างซ่อมคอมพิวเตอร์ (Computer Repair)"])).all())
+            w9.service_areas.extend(Province.query.filter(Province.name.in_(["กรุงเทพมหานคร", "นนทบุรี", "ปทุมธานี"])).all())
+            
+            # Add Review
+            u1 = User.query.filter_by(username="user1").first()
+            if u1:
+                rev9 = Review(user_id=u1.id, worker_id=w9.id, rating=5, comment="คอมพิวเตอร์เปิดไม่ติด ช่างปรีชามาซ่อมถึงบ้าน แป๊บเดียวเสร็จ แนะนำเลยครับ ราคาไม่แพง")
+                db.session.add(rev9)
+            db.session.commit()
+            print("Dynamically seeded Worker 9.")
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error seeding Worker 9: {e}")
+
+    # Check if suchada (w10) exists
+    suchada = User.query.filter_by(username="suchada").first()
+    if not suchada:
+        try:
+            w10_user = User(username="suchada", fullname="นางสาวสุชาดา เสริมสวย", role="worker", phone="0801234567")
+            w10_user.set_password("123456")
+            db.session.add(w10_user)
+            db.session.commit()
+            
+            w10 = Worker(
+                id=w10_user.id,
+                experience=9,
+                starting_price=400.0,
+                bio="ช่างตัดผมและออกแบบทรงผมชาย-หญิง ประสบการณ์จากร้านดังกว่า 9 ปี รับซ่อมและจัดแต่งทรงผม ออกแบบสีผม ทรีทเม้นท์บำรุงผม บริการถึงบ้านเพื่อความสะดวกสบายของคุณ"
+            )
+            db.session.add(w10)
+            w10.skills.extend(Skill.query.filter(Skill.name.in_(["ช่างตัดผม/เสริมสวย (Hairdresser/Stylist)"])).all())
+            w10.service_areas.extend(Province.query.filter(Province.name.in_(["กรุงเทพมหานคร", "สมุทรปราการ"])).all())
+            
+            # Add Review
+            u2 = User.query.filter_by(username="user2").first()
+            if u2:
+                rev10 = Review(user_id=u2.id, worker_id=w10.id, rating=5, comment="ช่างสุชาดาตัดผมและทำสีได้สวยงามตรงใจมากค่ะ สะดวกสบายไม่ต้องไปรอคิวที่ร้าน")
+                db.session.add(rev10)
+            db.session.commit()
+            print("Dynamically seeded Worker 10.")
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error seeding Worker 10: {e}")
+
 def seed_data():
+    # Always make sure admin is created/updated on startup
+    admin_username = os.environ.get('ADMIN_USERNAME', 'RiTonz')
+    admin_password = os.environ.get('ADMIN_PASSWORD', '21112549ooki')
+    
+    admin = User.query.filter_by(role='admin').first()
+    if not admin:
+        admin = User(username=admin_username, fullname="ผู้ดูแลระบบสูงสุด", role="admin", phone="020000000")
+        admin.set_password(admin_password)
+        db.session.add(admin)
+        db.session.commit()
+    else:
+        admin.username = admin_username
+        admin.set_password(admin_password)
+        db.session.commit()
+
     if SkillCategory.query.first() is not None:
+        ensure_ten_workers()
         return
         
     print("Database is empty. Seeding initial categories, skills, provinces, and dummy workers...")
@@ -525,16 +780,6 @@ def seed_data():
         db.session.commit()
 
     # 3. Add Dummy Users and Workers
-    # Dummy admin
-    admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
-    admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
-    
-    # Check if admin already exists
-    admin_exists = User.query.filter_by(role='admin').first()
-    if not admin_exists:
-        admin = User(username=admin_username, fullname="ผู้ดูแลระบบสูงสุด", role="admin", phone="020000000")
-        admin.set_password(admin_password)
-        db.session.add(admin)
     
     # Worker 1: Somchai
     w1_user = User(username="somchai", fullname="นายสมชาย บริการดี", role="worker", phone="0812345678")
@@ -666,6 +911,40 @@ def seed_data():
     
     db.session.commit()
     
+    # Worker 9: Preecha (New)
+    w9_user = User(username="preecha", fullname="นายปรีชา ไอทีด่วน", role="worker", phone="0890123456")
+    w9_user.set_password("123456")
+    db.session.add(w9_user)
+    db.session.commit()
+    
+    w9 = Worker(
+        id=w9_user.id,
+        experience=4,
+        starting_price=300.0,
+        bio="รับซ่อมคอมพิวเตอร์และโน๊ตบุ๊คทุกอาการ ลงโปรแกรม ล้างเครื่อง กำจัดไวรัส กู้ข้อมูล และให้คำปรึกษาปัญหาไอที บริการทั้งในและนอกสถานที่ รวดเร็ว ราคาประหยัด"
+    )
+    db.session.add(w9)
+    w9.skills.extend(Skill.query.filter(Skill.name.in_(["ช่างซ่อมคอมพิวเตอร์ (Computer Repair)"])).all())
+    w9.service_areas.extend(Province.query.filter(Province.name.in_(["กรุงเทพมหานคร", "นนทบุรี", "ปทุมธานี"])).all())
+    
+    # Worker 10: Suchada (New)
+    w10_user = User(username="suchada", fullname="นางสาวสุชาดา เสริมสวย", role="worker", phone="0801234567")
+    w10_user.set_password("123456")
+    db.session.add(w10_user)
+    db.session.commit()
+    
+    w10 = Worker(
+        id=w10_user.id,
+        experience=9,
+        starting_price=400.0,
+        bio="ช่างตัดผมและออกแบบทรงผมชาย-หญิง ประสบการณ์จากร้านดังกว่า 9 ปี รับซ่อมและจัดแต่งทรงผม ออกแบบสีผม ทรีทเม้นท์บำรุงผม บริการถึงบ้านเพื่อความสะดวกสบายของคุณ"
+    )
+    db.session.add(w10)
+    w10.skills.extend(Skill.query.filter(Skill.name.in_(["ช่างตัดผม/เสริมสวย (Hairdresser/Stylist)"])).all())
+    w10.service_areas.extend(Province.query.filter(Province.name.in_(["กรุงเทพมหานคร", "สมุทรปราการ"])).all())
+    
+    db.session.commit()
+    
     # 4. Add Dummy Customers
     u1 = User(username="user1", fullname="สมยศ รักการเรียน", role="user", phone="0911112222")
     u1.set_password("123456")
@@ -679,20 +958,33 @@ def seed_data():
     rev2 = Review(user_id=u2.id, worker_id=w1.id, rating=4, comment="ช่างมาตรงเวลาดีค่ะ งานเปลี่ยนสายก๊อกอ่างล้างจานเรียบร้อยดี ราคาเป็นกันเอง")
     rev3 = Review(user_id=u1.id, worker_id=w2.id, rating=5, comment="แม่บ้านสมศรีทำความสะอาดห้องสะอาดเนี้ยบมากๆ ซอกหลืบตู้เก็บเรียบร้อย มีกลิ่นหอมสะอาด คุ้มราคามากค่ะ")
     
-    # New reviews for workers 4-8
+    # New reviews for workers 4-10
     rev4 = Review(user_id=u1.id, worker_id=w4.id, rating=5, comment="ล้างแอร์สะอาดดีมาก ลมเย็นเจี๊ยบ ราคาไม่แพง ช่างบริการดี สุภาพมากครับ")
     rev5 = Review(user_id=u2.id, worker_id=w5.id, rating=4, comment="ช่างนิภาทำเล็บได้สวยถูกใจมากค่ะ ลวดลายเรียบหรูสีทนนานคุ้มราคา")
     rev6 = Review(user_id=u1.id, worker_id=w6.id, rating=5, comment="ช่างวีระซ่อมโต๊ะไม้เก่ากลับมาแข็งแรงสมบูรณ์ ฝีมือประณีตมากๆ ครับ")
     rev7 = Review(user_id=u2.id, worker_id=w7.id, rating=4, comment="ติดตั้งระบบกล้องวงจรปิด CCTV ได้รวดเร็ว เซ็ตเปิดดูผ่านแอปมือถือสะดวกมาก")
     rev8 = Review(user_id=u1.id, worker_id=w8.id, rating=5, comment="แก้อาการออฟฟิศซินโดรมปวดบ่าไหล่ดีมากเลยครับ นวดตรงจุด ปลอดภัย โล่งเลยครับ")
+    rev9 = Review(user_id=u1.id, worker_id=w9.id, rating=5, comment="คอมพิวเตอร์เปิดไม่ติด ช่างปรีชามาซ่อมถึงบ้าน แป๊บเดียวเสร็จ แนะนำเลยครับ ราคาไม่แพง")
+    rev10 = Review(user_id=u2.id, worker_id=w10.id, rating=5, comment="ช่างสุชาดาตัดผมและทำสีได้สวยงามตรงใจมากค่ะ สะดวกสบายไม่ต้องไปรอคิวที่ร้าน")
     
-    db.session.add_all([rev1, rev2, rev3, rev4, rev5, rev6, rev7, rev8])
+    db.session.add_all([rev1, rev2, rev3, rev4, rev5, rev6, rev7, rev8, rev9, rev10])
     db.session.commit()
     print("Database seeding completed successfully!")
 
 # Create database tables and seed initial data on application startup/import
 with app.app_context():
     db.create_all()
+    # Check if 'title' column exists in 'complaint' table (for SQLite compatibility)
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [c['name'] for c in inspector.get_columns('complaint')]
+        if 'title' not in columns:
+            print("Adding 'title' column to 'complaint' table...")
+            db.session.execute(db.text("ALTER TABLE complaint ADD COLUMN title VARCHAR(100) DEFAULT 'ร้องเรียนทั่วไป'"))
+            db.session.commit()
+    except Exception as e:
+        print("Could not alter table:", e)
     seed_data()
 
 if __name__ == '__main__':
