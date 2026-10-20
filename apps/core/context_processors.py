@@ -2,17 +2,24 @@ from core.models import Category, Province, Notification
 
 
 def global_context(request):
-    categories = Category.objects.filter(is_active=True).order_by('category_name')
-    provinces = Province.objects.all().order_by('province_name')
-    
-    saved_worker_ids = []
-    unread_notifications_count = 0
-    recent_notifications = []
+    try:
+        categories = list(Category.objects.filter(is_active=True).order_by('category_name'))
+        provinces = list(Province.objects.all().order_by('province_name'))
+        
+        saved_worker_ids = []
+        unread_notifications_count = 0
+        recent_notifications = []
 
-    if request.user.is_authenticated:
-        saved_worker_ids = list(request.user.saved_workers.values_list('worker_id', flat=True))
-        unread_notifications_count = Notification.objects.filter(recipient=request.user, is_read=False).count()
-        recent_notifications = Notification.objects.filter(recipient=request.user).order_by('-created_at')[:5]
+        if request.user.is_authenticated:
+            saved_worker_ids = list(request.user.saved_workers.values_list('worker_id', flat=True))
+            unread_notifications_count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+            recent_notifications = Notification.objects.filter(recipient=request.user).order_by('-created_at')[:5]
+    except Exception:
+        categories = []
+        provinces = []
+        saved_worker_ids = []
+        unread_notifications_count = 0
+        recent_notifications = []
         
     return {
         'global_categories': categories,

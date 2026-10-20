@@ -41,27 +41,36 @@ def get_client_ip(request):
 
 def home_view(request):
     # Approved & available workers
-    featured_workers = WorkerProfile.objects.filter(
-        status='APPROVED',
-        is_available=True
-    ).select_related('user').prefetch_related('services__category', 'service_areas__province', 'reviews')[:6]
+    try:
+        featured_workers = list(WorkerProfile.objects.filter(
+            status='APPROVED',
+            is_available=True
+        ).select_related('user').prefetch_related('services__category', 'service_areas__province', 'reviews')[:6])
 
-    # Quick categories
-    categories = Category.objects.filter(is_active=True).annotate(
-        worker_count=Count('worker_services__worker', filter=Q(worker_services__worker__status='APPROVED'), distinct=True)
-    )
+        # Quick categories
+        categories = list(Category.objects.filter(is_active=True).annotate(
+            worker_count=Count('worker_services__worker', filter=Q(worker_services__worker__status='APPROVED'), distinct=True)
+        ))
 
-    # Recent 5-star reviews
-    recent_reviews = Review.objects.filter(
-        is_hidden=False,
-        rating__gte=4
-    ).select_related('customer', 'worker__user')[:4]
+        # Recent 5-star reviews
+        recent_reviews = list(Review.objects.filter(
+            is_hidden=False,
+            rating__gte=4
+        ).select_related('customer', 'worker__user')[:4])
 
-    # Key statistics
-    total_workers = WorkerProfile.objects.filter(status='APPROVED').count()
-    total_categories = categories.count()
-    total_provinces = Province.objects.count()
-    total_reviews = Review.objects.filter(is_hidden=False).count()
+        # Key statistics
+        total_workers = WorkerProfile.objects.filter(status='APPROVED').count()
+        total_categories = categories.count()
+        total_provinces = Province.objects.count()
+        total_reviews = Review.objects.filter(is_hidden=False).count()
+    except Exception:
+        featured_workers = []
+        categories = []
+        recent_reviews = []
+        total_workers = 0
+        total_categories = 0
+        total_provinces = 0
+        total_reviews = 0
 
     context = {
         'featured_workers': featured_workers,
