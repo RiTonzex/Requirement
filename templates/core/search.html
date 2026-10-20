@@ -1,0 +1,332 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ค้นหาช่างฝีมือ | ระบบประกาศและค้นหาช่างรับจ้างท้องถิ่น{% endblock %}
+
+{% block content %}
+<div class="bg-primary-subtle py-4 border-bottom">
+    <div class="container">
+        <h2 class="fw-bold mb-1">ค้นหาช่างรับจ้างท้องถิ่น</h2>
+        <p class="text-muted mb-0">ค้นพบช่างฝีมือคุณภาพใกล้บ้านคุณ พร้อมติดต่อรับบริการได้ทันที</p>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row g-4">
+        <!-- Filter Sidebar -->
+        <div class="col-lg-3">
+            <div class="card-custom p-4 sticky-top" style="top: 90px;">
+                <h5 class="fw-bold mb-3 d-flex justify-content-between align-items-center">
+                    <span><i class="fa-solid fa-filter me-2 text-primary"></i> ตัวกรองค้นหา</span>
+                    {% if keyword or selected_category_id or selected_province_id %}
+                        <a href="{% url 'core:search' %}" class="small text-danger text-decoration-none fw-normal">ล้างตัวกรอง</a>
+                    {% endif %}
+                </h5>
+
+                <form action="{% url 'core:search' %}" method="GET" id="searchFilterForm">
+                    <!-- Keyword -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">คำค้นหา / ชื่อช่าง</label>
+                        <input type="text" name="keyword" class="form-control" placeholder="เช่น ช่างไฟ, ล้างแอร์..." value="{{ keyword }}">
+                    </div>
+
+                    <!-- Category -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">หมวดหมู่งาน</label>
+                        <select name="category" class="form-select">
+                            <option value="">ทุกหมวดหมู่</option>
+                            {% for cat in global_categories %}
+                                <option value="{{ cat.id }}" {% if selected_category_id == cat.id %}selected{% endif %}>
+                                    {{ cat.category_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Province -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">จังหวัดที่ให้บริการ</label>
+                        <select name="province" class="form-select">
+                            <option value="">ทุกจังหวัด (77 จังหวัด)</option>
+                            {% for prov in global_provinces %}
+                                <option value="{{ prov.id }}" {% if selected_province_id == prov.id %}selected{% endif %}>
+                                    {{ prov.province_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- GPS Location Search Button -->
+                    <button type="button" id="btnGpsSearch" class="btn btn-outline-danger w-100 rounded-pill mb-3 fw-semibold shadow-sm">
+                        <i class="fa-solid fa-crosshairs me-1"></i> 📍 ค้นหาช่างใกล้ฉัน (GPS)
+                    </button>
+                    <div id="gpsStatusText" class="small text-muted mb-2 text-center d-none" style="font-size: 0.75rem;"></div>
+
+                    <!-- Available Only -->
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="available" value="1" class="form-check-input" id="availableCheck" {% if available_only %}checked{% endif %}>
+                        <label class="form-check-label small fw-semibold" for="availableCheck">
+                            เฉพาะช่างที่พร้อมรับงานทันที
+                        </label>
+                    </div>
+
+                    <!-- Hidden GPS & Sort Inputs -->
+                    <input type="hidden" name="user_lat" id="userLatInput" value="{{ user_lat|default:'' }}">
+                    <input type="hidden" name="user_lng" id="userLngInput" value="{{ user_lng|default:'' }}">
+                    <input type="hidden" name="sort" id="sortInput" value="{{ sort_by }}">
+
+                    <button type="submit" class="btn btn-primary-custom w-100 rounded-pill mt-2">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i> ใช้ตัวกรอง
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Worker Results List -->
+        <div class="col-lg-9">
+            <!-- Header Bar -->
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4 bg-white p-3 rounded-4 border">
+                <div>
+                    <span class="text-muted">ผลการค้นหา:</span>
+                    <strong class="text-dark fs-5 ms-1">{{ results_count }}</strong> คน
+                    {% if keyword %}
+                        <span class="badge bg-light text-dark border ms-2">"{{ keyword }}"</span>
+                    {% endif %}
+                    {% if selected_category %}
+                        <span class="badge bg-primary-subtle text-primary ms-1">{{ selected_category.category_name }}</span>
+                    {% endif %}
+                    {% if selected_province %}
+                        <span class="badge bg-info-subtle text-info ms-1">{{ selected_province.province_name }}</span>
+                    {% endif %}
+                </div>
+
+                <!-- Sorting Dropdown -->
+                <div class="d-flex align-items-center gap-2">
+                    <label class="small text-muted text-nowrap">เรียงตาม:</label>
+                    <select class="form-select form-select-sm" onchange="document.getElementById('sortInput').value = this.value; document.getElementById('searchFilterForm').submit();" style="width: 170px;">
+                        {% if has_gps %}
+                            <option value="distance" {% if sort_by == 'distance' %}selected{% endif %}>📍 ระยะทางใกล้สุด (GPS)</option>
+                        {% endif %}
+                        <option value="recommended" {% if sort_by == 'recommended' %}selected{% endif %}>แนะนำ / ความนิยม</option>
+                        <option value="rating" {% if sort_by == 'rating' %}selected{% endif %}>คะแนนรีวิวสูงสุด</option>
+                        <option value="completed" {% if sort_by == 'completed' %}selected{% endif %}>งานเสร็จสิ้นมากสุด</option>
+                        <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>ช่างใหม่ล่าสุด</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- GPS Live Map Container (when GPS active) -->
+            {% if has_gps %}
+                <div class="card-custom p-3 mb-4 shadow-sm border border-danger border-opacity-25 bg-white">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold text-danger small"><i class="fa-solid fa-map-location-dot me-1"></i> แผนที่ตำแหน่งช่างใกล้คุณ</span>
+                        <span class="badge bg-danger-subtle text-danger rounded-pill small">พิกัดของคุณ: {{ user_lat|slice:":7" }}, {{ user_lng|slice:":7" }}</span>
+                    </div>
+                    <div id="workerMap" style="height: 250px; border-radius: 12px; z-index: 1;" class="border"></div>
+                </div>
+            {% endif %}
+
+            <!-- Worker Cards Grid -->
+            <div class="row row-cols-1 row-cols-md-2 g-4">
+                {% for worker in workers %}
+                    <div class="col">
+                        <div class="worker-card p-4 h-100 d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="d-flex gap-3 align-items-center">
+                                    <img src="{{ worker.display_profile_image_url }}" alt="{{ worker.user.full_name }}" class="worker-avatar shadow-sm" style="object-fit: cover;">
+
+                                    <div>
+                                        <h5 class="fw-bold mb-1">
+                                            <a href="{% url 'workers:detail' worker.id %}" class="text-dark text-decoration-none">
+                                                {{ worker.user.full_name }}
+                                            </a>
+                                            {% if worker.is_id_verified %}
+                                                <i class="fa-solid fa-circle-check text-info ms-1" style="font-size: 0.9rem;" title="ช่างยืนยันตัวตนแล้ว"></i>
+                                            {% endif %}
+                                        </h5>
+                                        <div class="d-flex align-items-center gap-1 text-muted small">
+                                            {% if worker.review_count > 0 %}
+                                                <span class="star-rating">
+                                                    <i class="fa-solid fa-star text-warning"></i>
+                                                    <strong>{{ worker.average_rating }}</strong>
+                                                </span>
+                                                <span>({{ worker.review_count }} รีวิว)</span>
+                                            {% else %}
+                                                <span class="badge bg-success-subtle text-success rounded-pill px-2 py-0" style="font-size: 0.75rem;">
+                                                    <i class="fa-solid fa-sparkles me-1"></i>ช่างใหม่
+                                                </span>
+                                            {% endif %}
+                                            <span class="mx-1">•</span>
+                                            <span class="text-success"><i class="fa-solid fa-circle-check"></i> {{ worker.completed_jobs_count }} งานสำเร็จ</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Bookmark / Save -->
+                                {% if user.is_authenticated and not user.is_worker %}
+                                    <button type="button" class="btn-bookmark btn-ajax-save {% if worker.id in user_saved_worker_ids %}active{% endif %}" data-worker-id="{{ worker.id }}" title="บันทึกช่างนี้">
+                                        <i class="fa-{% if worker.id in user_saved_worker_ids %}solid fa-heart text-danger{% else %}regular fa-heart{% endif %}"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+
+                            <!-- Availability & Distance & Warranty -->
+                            <div class="mb-2 d-flex flex-wrap gap-1 align-items-center">
+                                {% if worker.is_available %}
+                                    <span class="badge-available"><i class="fa-solid fa-circle text-success" style="font-size: 0.5rem;"></i> พร้อมรับงาน</span>
+                                {% else %}
+                                    <span class="badge-busy"><i class="fa-solid fa-circle text-danger" style="font-size: 0.5rem;"></i> พักการรับงาน</span>
+                                {% endif %}
+
+                                {% if worker.distance_km is not None %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger border-opacity-25 rounded-pill" style="font-size: 0.72rem;">
+                                        <i class="fa-solid fa-location-arrow me-1"></i> ห่าง {{ worker.distance_km }} กม.
+                                    </span>
+                                {% endif %}
+
+                                <span class="badge bg-info-subtle text-info border border-info border-opacity-25 rounded-pill" style="font-size: 0.72rem;">
+                                    <i class="fa-solid fa-shield-halved me-1"></i> ประกัน {{ worker.warranty_days }} วัน
+                                </span>
+                            </div>
+
+                            <p class="text-muted small mb-3 flex-grow-1">
+                                {{ worker.bio|default:"ช่างฝีมือคุณภาพ มีประสบการณ์ในการทำงาน ยินดีให้คำปรึกษาและประเมินราคาก่อนเริ่มงาน"|truncatechars:120 }}
+                            </p>
+
+                            <!-- Services List & Starting Price -->
+                            <div class="bg-light p-3 rounded-3 mb-3 small">
+                                <div class="fw-semibold text-dark mb-1">ทักษะงานและราคาเริ่มต้น:</div>
+                                <div class="d-flex flex-column gap-1">
+                                    {% for s in worker.services_list %}
+                                        <div class="d-flex justify-content-between">
+                                            <span class="text-muted">• {{ s.category.category_name }}</span>
+                                            <strong class="text-primary">฿{{ s.starting_price|floatformat:0 }} <small class="text-muted fw-normal">{{ s.price_unit|default:"/งาน" }}</small></strong>
+                                        </div>
+                                    {% empty %}
+                                        <div class="text-muted fst-italic">ไม่ได้ระบุบริการเฉพาะ</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="border-top mt-2 pt-2 text-muted">
+                                    <i class="fa-solid fa-location-dot text-danger me-1"></i> พื้นที่: 
+                                    {% for area in worker.service_areas_list %}
+                                        {{ area.province.province_name }}{% if not forloop.last %}, {% endif %}
+                                    {% empty %}
+                                        ทุกพื้นที่
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="d-flex gap-2 pt-2 mt-auto">
+                                <a href="{% url 'workers:detail' worker.id %}" class="btn btn-outline-secondary btn-sm flex-fill rounded-pill text-center {% if user.is_worker %}w-100{% endif %}">
+                                    <i class="fa-solid fa-id-card me-1"></i> ดูโปรไฟล์ & รีวิว
+                                </a>
+                                {% if not user.is_worker %}
+                                    <a href="{% url 'workers:detail' worker.id %}#booking-section" class="btn btn-primary-custom btn-sm flex-fill rounded-pill text-center">
+                                        <i class="fa-solid fa-calendar-check me-1"></i> ขอรับบริการ
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="col-12">
+                        <div class="card-custom p-5 text-center text-muted">
+                            <i class="fa-solid fa-magnifying-glass fs-1 mb-3 text-secondary"></i>
+                            <h5 class="fw-bold text-dark mb-2">ไม่พบช่างที่ตรงกับเงื่อนไขการค้นหา</h5>
+                            <p class="small mb-4">ลองปรับเปลี่ยนคำค้นหา หรือเลือกหมวดหมู่งานและจังหวัดให้กว้างขึ้น</p>
+                            <a href="{% url 'core:search' %}" class="btn btn-outline-primary rounded-pill px-4">
+                                ล้างตัวกรองทั้งหมด
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnGps = document.getElementById('btnGpsSearch');
+    const statusText = document.getElementById('gpsStatusText');
+    const latInput = document.getElementById('userLatInput');
+    const lngInput = document.getElementById('userLngInput');
+    const sortInput = document.getElementById('sortInput');
+    const filterForm = document.getElementById('searchFilterForm');
+
+    if (btnGps) {
+        btnGps.addEventListener('click', function() {
+            if (!navigator.geolocation) {
+                alert('เบราว์เซอร์ของคุณไม่รองรับการระบุพิกัด GPS');
+                return;
+            }
+            btnGps.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> กำลังระบุพิกัด...';
+            btnGps.disabled = true;
+            if (statusText) {
+                statusText.classList.remove('d-none');
+                statusText.textContent = 'กำลังขออนุญาตเข้าถึงพิกัดของคุณ...';
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    latInput.value = pos.coords.latitude;
+                    lngInput.value = pos.coords.longitude;
+                    sortInput.value = 'distance';
+                    filterForm.submit();
+                },
+                function(err) {
+                    btnGps.innerHTML = '<i class="fa-solid fa-crosshairs me-1"></i> 📍 ค้นหาช่างใกล้ฉัน (GPS)';
+                    btnGps.disabled = false;
+                    if (statusText) {
+                        statusText.textContent = 'ไม่สามารถดึงตำแหน่งได้: ' + (err.message || 'โปรดอนุญาตการเข้าถึง Location ในเบราว์เซอร์');
+                    }
+                },
+                { timeout: 10000, enableHighAccuracy: true }
+            );
+        });
+    }
+
+    // Initialize Leaflet Map if has_gps
+    {% if has_gps %}
+        const mapEl = document.getElementById('workerMap');
+        if (mapEl) {
+            const userLat = parseFloat("{{ user_lat }}");
+            const userLng = parseFloat("{{ user_lng }}");
+            const map = L.map('workerMap').setView([userLat, userLng], 12);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            // User location pin
+            const userIcon = L.divIcon({
+                className: 'custom-user-pin',
+                html: '<div style="background-color: #ef4444; width: 18px; height: 18px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 12px rgba(239,68,68,0.9);"></div>',
+                iconSize: [18, 18],
+                iconAnchor: [9, 9]
+            });
+            L.marker([userLat, userLng], { icon: userIcon }).addTo(map)
+                .bindPopup('<strong>📍 ตำแหน่งของคุณ</strong>').openPopup();
+
+            // Worker location pins
+            {% for worker in workers %}
+                {% if worker.computed_lat and worker.computed_lng %}
+                    L.marker([{{ worker.computed_lat }}, {{ worker.computed_lng }}]).addTo(map)
+                        .bindPopup(`
+                            <div style="font-family: 'Prompt', sans-serif; font-size: 0.85rem; min-width: 140px;">
+                                <strong style="color: #1e293b;">{{ worker.user.full_name }}</strong>
+                                {% if worker.distance_km %}<div class="text-danger fw-bold" style="font-size: 0.8rem;">📍 ห่าง {{ worker.distance_km }} กม.</div>{% endif %}
+                                <a href="{% url 'workers:detail' worker.id %}" target="_blank" style="color: #2563eb; font-weight: 600; text-decoration: none; font-size: 0.8rem;">ดูโปรไฟล์ &rarr;</a>
+                            </div>
+                        `);
+                {% endif %}
+            {% endfor %}
+        }
+    {% endif %}
+});
+</script>
+{% endblock %}

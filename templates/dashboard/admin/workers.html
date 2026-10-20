@@ -1,0 +1,237 @@
+{% extends 'dashboard/admin/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="fa-solid fa-users-gear text-primary me-2"></i>จัดการและอนุมัติข้อมูลช่าง</h3>
+        <p class="text-muted small mb-0">ตรวจสอบสถานะ อนุมัติ ปฏิเสธ ส่งข้อความเตือน หรือตรวจสอบเอกสารยืนยันตัวตน (KYC Verified Badge)</p>
+    </div>
+
+    <!-- Status Filters -->
+    <div class="btn-group rounded-pill overflow-hidden border shadow-sm">
+        <a href="?status=ALL" class="btn btn-sm {% if status_filter == 'ALL' %}btn-primary{% else %}btn-light{% endif %}">ทั้งหมด</a>
+        <a href="?status=PENDING" class="btn btn-sm {% if status_filter == 'PENDING' %}btn-warning text-dark{% else %}btn-light{% endif %}">รออนุมัติ</a>
+        <a href="?status=APPROVED" class="btn btn-sm {% if status_filter == 'APPROVED' %}btn-success{% else %}btn-light{% endif %}">อนุมัติแล้ว</a>
+        <a href="?status=REJECTED" class="btn btn-sm {% if status_filter == 'REJECTED' %}btn-danger{% else %}btn-light{% endif %}">ปฏิเสธ</a>
+        <a href="?status=SUSPENDED" class="btn btn-sm {% if status_filter == 'SUSPENDED' %}btn-dark{% else %}btn-light{% endif %}">ระงับ</a>
+    </div>
+</div>
+
+<div class="card-custom p-4 bg-white shadow-sm border-0 rounded-4 mb-4">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ช่างรับจ้าง</th>
+                    <th>สถานะ</th>
+                    <th>เอกสาร KYC</th>
+                    <th>บริการ & ราคา</th>
+                    <th>เวลาทำการ</th>
+                    <th class="text-end" style="min-width: 220px;">การจัดการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for w in workers %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="fw-bold">{{ w.user.full_name }}</div>
+                                {% if w.is_id_verified %}
+                                    <i class="fa-solid fa-circle-check text-info" title="ยืนยันตัวตนแล้ว (Verified Badge)"></i>
+                                {% endif %}
+                                <a href="{% url 'workers:detail' w.id %}" target="_blank" class="text-primary small" title="ดูหน้าโปรไฟล์สาธารณะ"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                            </div>
+                            <div class="small text-muted">{{ w.user.email }} • {{ w.user.phone_number }}</div>
+                        </td>
+                        <td>
+                            {% if w.status == 'APPROVED' %}
+                                <span class="badge bg-success rounded-pill px-2 py-1"><i class="fa-solid fa-circle-check me-1"></i>อนุมัติแล้ว</span>
+                            {% elif w.status == 'PENDING' %}
+                                <span class="badge bg-warning text-dark rounded-pill px-2 py-1"><i class="fa-solid fa-clock me-1"></i>รออนุมัติ</span>
+                            {% elif w.status == 'REJECTED' %}
+                                <span class="badge bg-danger rounded-pill px-2 py-1"><i class="fa-solid fa-xmark me-1"></i>ปฏิเสธ</span>
+                            {% elif w.status == 'SUSPENDED' %}
+                                <span class="badge bg-dark rounded-pill px-2 py-1"><i class="fa-solid fa-ban me-1"></i>ระงับใช้งาน</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column gap-1 small">
+                                {% if w.id_card_image %}
+                                    <a href="{{ w.display_id_card_url }}" target="_blank" class="badge bg-primary-subtle text-primary border text-decoration-none">
+                                        <i class="fa-solid fa-id-card me-1"></i> บัตรประชาชน
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted" style="font-size: 0.75rem;">ไม่มีบัตร ปชช.</span>
+                                {% endif %}
+
+                                {% if w.certificate_image %}
+                                    <a href="{{ w.display_certificate_url }}" target="_blank" class="badge bg-success-subtle text-success border text-decoration-none">
+                                        <i class="fa-solid fa-award me-1"></i> ใบประกอบวิชาชีพ
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="small">
+                            {% for s in w.services.all %}
+                                <div>• {{ s.category.category_name }} (฿{{ s.starting_price|floatformat:0 }} {{ s.price_unit|default:"/งาน" }})</div>
+                            {% empty %}
+                                <span class="text-muted fst-italic">ยังไม่ระบุ</span>
+                            {% endfor %}
+                        </td>
+                        <td class="small text-muted" style="max-width: 150px;">
+                            {{ w.working_hours|default:"จันทร์ - เสาร์" }}
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1 flex-wrap justify-content-end align-items-center">
+                                <!-- KYC Verify Button -->
+                                <form method="POST" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="worker_id" value="{{ w.id }}">
+                                    {% if not w.is_id_verified %}
+                                        <button type="submit" name="action" value="VERIFY_KYC" class="btn btn-outline-info btn-sm rounded-pill" title="ให้ตรา Verified Badge">
+                                            <i class="fa-solid fa-certificate me-1"></i> ให้ตรา Verified
+                                        </button>
+                                    {% else %}
+                                        <button type="submit" name="action" value="UNVERIFY_KYC" class="btn btn-outline-secondary btn-sm rounded-pill" title="ยกเลิกตรา Verified">
+                                            <i class="fa-solid fa-xmark me-1"></i> ปลดตรา
+                                        </button>
+                                    {% endif %}
+
+                                    {% if w.status == 'PENDING' or w.status == 'REJECTED' or w.status == 'SUSPENDED' %}
+                                        <button type="submit" name="action" value="APPROVE" class="btn btn-success btn-sm rounded-pill px-3">
+                                            <i class="fa-solid fa-check me-1"></i> อนุมัติ
+                                        </button>
+                                    {% endif %}
+                                </form>
+
+                                {% if w.status == 'PENDING' %}
+                                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#rejectModal{{ w.id }}">
+                                        <i class="fa-solid fa-xmark me-1"></i> ปฏิเสธ
+                                    </button>
+                                {% endif %}
+
+                                <!-- Send Warning Button -->
+                                <button type="button" class="btn btn-outline-warning text-dark btn-sm rounded-pill px-2" data-bs-toggle="modal" data-bs-target="#warnModal{{ w.id }}" title="ส่งข้อความเตือนช่าง">
+                                    <i class="fa-solid fa-bell me-1"></i> เตือน
+                                </button>
+
+                                {% if w.status == 'APPROVED' %}
+                                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#suspendModal{{ w.id }}">
+                                        <i class="fa-solid fa-ban me-1"></i> ระงับ
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="fa-regular fa-folder-open fs-3 d-block mb-2 text-secondary opacity-50"></i>
+                            ไม่พบข้อมูลช่างในสถานะนี้
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODALS PLACED OUTSIDE TABLE (PREVENTS FLICKER) -->
+<!-- ========================================== -->
+{% for w in workers %}
+    <!-- Warn Worker Modal -->
+    <div class="modal fade text-start" id="warnModal{{ w.id }}" tabindex="-1" aria-labelledby="warnModalLabel{{ w.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom bg-light">
+                    <h5 class="modal-title fw-bold text-warning-emphasis" id="warnModalLabel{{ w.id }}">
+                        <i class="fa-solid fa-bell text-warning me-2"></i>ส่งข้อความเตือนช่าง: {{ w.user.full_name }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="worker_id" value="{{ w.id }}">
+                    <input type="hidden" name="action" value="WARN">
+                    <div class="modal-body p-4">
+                        <p class="small text-muted mb-3">ข้อความนี้จะถูกส่งเป็นการแจ้งเตือนระบบ (Notification) เข้าสู่หน้ากระดิ่งและแดชบอร์ดของช่างทันที</p>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">ข้อความเตือน / ข้อควรระวัง:</label>
+                            <textarea name="warning_message" class="form-control" rows="3" required placeholder="เช่น ผู้ดูแลระบบขอแจ้งเตือนเรื่องการมาสายหรือมีข้อร้องเรียนจากลูกค้า..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top bg-light">
+                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="submit" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold">
+                            <i class="fa-solid fa-paper-plane me-1"></i> ส่งคำเตือน
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Suspend Worker Modal -->
+    <div class="modal fade text-start" id="suspendModal{{ w.id }}" tabindex="-1" aria-labelledby="suspendModalLabel{{ w.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom bg-light">
+                    <h5 class="modal-title fw-bold text-danger" id="suspendModalLabel{{ w.id }}">
+                        <i class="fa-solid fa-ban me-2"></i>ระงับบัญชีช่าง: {{ w.user.full_name }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="worker_id" value="{{ w.id }}">
+                    <input type="hidden" name="action" value="SUSPEND">
+                    <div class="modal-body p-4">
+                        <div class="alert alert-danger py-2 px-3 small mb-3">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i> เมื่อระงับบัญชี ช่างจะไม่แสดงในผลการค้นหา และจะไม่สามารถรับคำขอจองบริการใหม่ได้
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">ระบุเหตุผลการระงับบัญชี (เพื่อแจ้งเตือนให้ช่างทราบ):</label>
+                            <textarea name="suspend_reason" class="form-control" rows="3" required placeholder="เช่น ตรวจพบพฤติกรรมไม่เหมาะสม หรือได้รับข้อร้องเรียนซ้ำซ้อน..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top bg-light">
+                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="submit" class="btn btn-danger btn-sm rounded-pill px-4 fw-bold">
+                            <i class="fa-solid fa-user-slash me-1"></i> ยืนยันระงับบัญชี
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject Reason Modal -->
+    <div class="modal fade text-start" id="rejectModal{{ w.id }}" tabindex="-1" aria-labelledby="rejectModalLabel{{ w.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom bg-light">
+                    <h5 class="modal-title fw-bold text-danger" id="rejectModalLabel{{ w.id }}">
+                        <i class="fa-solid fa-circle-xmark me-2"></i>ปฏิเสธคำขอช่าง: {{ w.user.full_name }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="worker_id" value="{{ w.id }}">
+                    <input type="hidden" name="action" value="REJECT">
+                    <div class="modal-body p-4">
+                        <label class="form-label fw-semibold small">ระบุเหตุผลการปฏิเสธ (เพื่อแจ้งให้ช่างทราบ)</label>
+                        <textarea name="rejection_reason" rows="3" class="form-control rounded-3" placeholder="เช่น รูปถ่ายไม่ชัดเจน, เอกสารไม่ถูกต้อง, ข้อมูลบริการไม่ครบถ้วน..." required></textarea>
+                    </div>
+                    <div class="modal-footer border-top bg-light">
+                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="submit" class="btn btn-danger btn-sm rounded-pill px-4 fw-bold">ยืนยันปฏิเสธ</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endfor %}
+
+{% endblock %}

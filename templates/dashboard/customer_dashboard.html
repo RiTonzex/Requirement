@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}แดชบอร์ดลูกค้า | ช่างใกล้บ้าน{% endblock %}
+
+{% block content %}
+<div class="bg-primary text-white py-4">
+    <div class="container">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}" class="rounded-circle border border-2 border-white shadow" style="width: 56px; height: 56px; object-fit: cover;">
+                <div>
+                    <h3 class="fw-bold mb-1">สวัสดีคุณ {{ user.full_name }}</h3>
+                    <p class="opacity-75 mb-0 small">จัดการรายการขอรับบริการและช่างที่บันทึกไว้</p>
+                </div>
+            </div>
+            <a href="{% url 'core:search' %}" class="btn btn-warning rounded-pill px-4 fw-semibold text-dark">
+                <i class="fa-solid fa-magnifying-glass me-1"></i> ค้นหาช่างใหม่
+            </a>
+        </div>
+
+    </div>
+</div>
+
+<div class="container py-5">
+    <!-- Quick Stats -->
+    <div class="row g-3 mb-5">
+        <div class="col-6 col-md-3">
+            <div class="card-custom p-3 text-center border-start border-primary border-4">
+                <div class="display-6 fw-bold text-primary">{{ bookings.count }}</div>
+                <div class="small text-muted">คำขอรับบริการทั้งหมด</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card-custom p-3 text-center border-start border-warning border-4">
+                <div class="display-6 fw-bold text-warning">{{ pending_bookings_count }}</div>
+                <div class="small text-muted">รอดำเนินการ</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card-custom p-3 text-center border-start border-info border-4">
+                <div class="display-6 fw-bold text-info">{{ in_progress_bookings_count }}</div>
+                <div class="small text-muted">กำลังดำเนินการ</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card-custom p-3 text-center border-start border-success border-4">
+                <div class="display-6 fw-bold text-success">{{ completed_bookings_count }}</div>
+                <div class="small text-muted">งานเสร็จสิ้น</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bookings / Service Requests Table -->
+    <div class="card-custom p-4 mb-5">
+        <h5 class="fw-bold mb-3"><i class="fa-solid fa-clipboard-list me-2 text-primary"></i> ประวัติคำขอรับบริการของฉัน</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>เลขที่คำขอ</th>
+                        <th>ช่างผู้รับงาน</th>
+                        <th>ประเภทงาน</th>
+                        <th>วันที่สะดวก</th>
+                        <th>สถานะ</th>
+                        <th>รายละเอียด</th>
+                        <th class="text-end">การจัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in bookings %}
+                        <tr>
+                            <td><strong class="text-primary">#{{ b.id }}</strong></td>
+                            <td>
+                                <a href="{% url 'workers:detail' b.worker.id %}" class="fw-bold text-dark text-decoration-none">
+                                    {{ b.worker.user.full_name }}
+                                </a>
+                                <div class="small text-muted"><i class="fa-solid fa-phone me-1"></i> {{ b.worker.user.phone_number }}</div>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for cat in b.all_categories %}
+                                        <span class="badge bg-light text-dark border">{{ cat.category_name }}</span>
+                                    {% empty %}
+                                        <span class="badge bg-light text-dark border">{{ b.category.category_name }}</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if b.status == 'REQUESTED' %}
+                                    <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i> รอตอบรับ</span>
+                                {% elif b.status == 'IN_PROGRESS' %}
+                                    <span class="badge bg-info text-white"><i class="fa-solid fa-spinner me-1"></i> กำลังดำเนินการ</span>
+                                {% elif b.status == 'COMPLETED' %}
+                                    <span class="badge bg-success text-white"><i class="fa-solid fa-check-circle me-1"></i> เสร็จสิ้นแล้ว</span>
+                                {% elif b.status == 'CANCELLED' %}
+                                    <span class="badge bg-danger text-white"><i class="fa-solid fa-xmark me-1"></i> ยกเลิก</span>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted text-truncate" style="max-width: 180px;">{{ b.details }}</td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-1 align-items-center">
+                                    <a href="{% url 'bookings:chat' b.id %}" class="btn btn-outline-primary btn-sm rounded-pill" title="แชทคุยกับช่าง">
+                                        <i class="fa-solid fa-comments"></i>
+                                    </a>
+                                    <a href="{% url 'bookings:detail' b.id %}" class="btn btn-outline-secondary btn-sm rounded-pill">
+                                        รายละเอียด
+                                    </a>
+                                    {% if b.status == 'REQUESTED' %}
+                                        <form method="POST" action="{% url 'bookings:update_status' b.id %}" class="d-inline" onsubmit="return confirm('คุณต้องการยกเลิกคำขอนี้ใช่หรือไม่?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="CANCELLED">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill">
+                                                ยกเลิก
+                                            </button>
+                                        </form>
+                                    {% elif b.status == 'COMPLETED' %}
+                                        <a href="{% url 'workers:detail' b.worker.id %}#reviews-section" class="btn btn-warning btn-sm rounded-pill fw-bold">
+                                            <i class="fa-solid fa-star me-1"></i> รีวิว
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                ยังไม่มีรายการคำขอรับบริการ
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Saved Workers Section -->
+    <div class="card-custom p-4">
+        <h5 class="fw-bold mb-3"><i class="fa-solid fa-heart me-2 text-danger"></i> ช่างที่บันทึกไว้ในรายการโปรด ({{ saved_workers.count }})</h5>
+        <div class="row row-cols-1 row-cols-md-3 g-3">
+            {% for item in saved_workers %}
+                <div class="col">
+                    <div class="p-3 border rounded-4 d-flex align-items-center justify-content-between bg-light">
+                        <div class="d-flex align-items-center gap-3">
+                            <img src="{{ item.worker.display_profile_image_url }}" alt="{{ item.worker.user.full_name }}" class="worker-avatar shadow-sm border" style="width: 50px; height: 50px; object-fit: cover;">
+
+                            <div>
+                                <a href="{% url 'workers:detail' item.worker.id %}" class="fw-bold text-dark text-decoration-none">
+                                    {{ item.worker.user.full_name }}
+                                </a>
+                                <div class="small text-warning"><i class="fa-solid fa-star"></i> {{ item.worker.average_rating }} ({{ item.worker.review_count }} รีวิว)</div>
+                            </div>
+                        </div>
+                        <a href="{% url 'workers:detail' item.worker.id %}" class="btn btn-sm btn-primary-custom rounded-pill">
+                            ดูข้อมูล
+                        </a>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12 text-center py-4 text-muted">
+                    ยังไม่มีช่างที่บันทึกไว้ สามารถกดรูปหัวใจเพื่อบันทึกช่างที่ถูกใจได้
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

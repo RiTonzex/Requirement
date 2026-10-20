@@ -1,0 +1,74 @@
+{% extends 'dashboard/admin/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-1">ตรวจสอบและจัดการรีวิว</h3>
+        <p class="text-muted small mb-0">ดูแลความโปร่งใส ซ่อนรีวิวที่ไม่เหมาะสม หรือตรวจสอบข้อร้องเรียน</p>
+    </div>
+</div>
+
+<div class="card-custom p-4 bg-white">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>รหัส</th>
+                    <th>ผู้รีวิว (ลูกค้า)</th>
+                    <th>ช่างที่ถูกรีวิว</th>
+                    <th>คะแนน</th>
+                    <th>ข้อความรีวิว & การตอบกลับ</th>
+                    <th>สถานะ</th>
+                    <th class="text-end">การจัดการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rev in reviews %}
+                    <tr>
+                        <td><strong>#{{ rev.id }}</strong></td>
+                        <td>
+                            <div class="fw-bold">{{ rev.customer.full_name }}</div>
+                            <small class="text-muted">{{ rev.created_at|date:"d M Y" }}</small>
+                        </td>
+                        <td>
+                            <a href="{% url 'workers:detail' rev.worker.id %}" target="_blank" class="text-primary text-decoration-none fw-bold">
+                                {{ rev.worker.user.full_name }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="star-rating">
+                                <i class="fa-solid fa-star text-warning"></i> {{ rev.rating }}
+                            </span>
+                        </td>
+                        <td class="small" style="max-width: 300px;">
+                            <div class="text-dark">{{ rev.comment|default:"(ไม่มีข้อความ)" }}</div>
+                            {% if rev.worker_reply %}
+                                <div class="text-primary mt-1"><i class="fa-solid fa-reply me-1"></i> {{ rev.worker_reply }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if rev.is_hidden %}
+                                <span class="badge bg-danger rounded-pill">ซ่อนอยู่</span>
+                            {% else %}
+                                <span class="badge bg-success rounded-pill">แสดงปกติ</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <form method="POST" action="{% url 'reviews:toggle_hidden' rev.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm {% if rev.is_hidden %}btn-outline-success{% else %}btn-outline-danger{% endif %} rounded-pill px-3">
+                                    {% if rev.is_hidden %}แสดงรีวิว{% else %}ซ่อนรีวิว{% endif %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">ไม่พบข้อมูลรีวิวในระบบ</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

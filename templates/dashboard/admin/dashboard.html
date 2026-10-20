@@ -1,0 +1,231 @@
+{% extends 'dashboard/admin/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-1">ภาพรวมระบบ (Admin Overview)</h3>
+        <p class="text-muted small mb-0">ยินดีต้อนรับสู่แผงควบคุมระบบประกาศและค้นหาช่างรับจ้างท้องถิ่น</p>
+    </div>
+    <a href="{% url 'dashboard:admin_stats' %}" class="btn btn-primary-custom rounded-pill btn-sm px-3">
+        <i class="fa-solid fa-chart-line me-1"></i> ดูรายงานสถิติเชิงลึก
+    </a>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card-custom p-3 bg-white border-start border-primary border-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="small text-muted fw-semibold">ผู้ใช้งานทั้งหมด</div>
+                    <div class="display-6 fw-bold text-dark">{{ total_users }}</div>
+                    <small class="text-muted">ลูกค้า {{ total_customers }} คน</small>
+                </div>
+                <div class="fs-1 text-primary opacity-25"><i class="fa-solid fa-users"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card-custom p-3 bg-white border-start border-warning border-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="small text-muted fw-semibold">ช่างรออนุมัติ</div>
+                    <div class="display-6 fw-bold text-warning">{{ pending_workers }}</div>
+                    <small class="text-success">อนุมัติแล้ว {{ approved_workers }} คน</small>
+                </div>
+                <div class="fs-1 text-warning opacity-25"><i class="fa-solid fa-user-clock"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card-custom p-3 bg-white border-start border-success border-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="small text-muted fw-semibold">คำขอจ้างงาน</div>
+                    <div class="display-6 fw-bold text-success">{{ total_requests }}</div>
+                    <small class="text-muted">เสร็จสิ้น {{ completed_requests }} รายการ</small>
+                </div>
+                <div class="fs-1 text-success opacity-25"><i class="fa-solid fa-clipboard-check"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card-custom p-3 bg-white border-start border-info border-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="small text-muted fw-semibold">ช่างยืนยันตัวตน (KYC)</div>
+                    <div class="display-6 fw-bold text-info">{{ verified_workers }}</div>
+                    <small class="text-muted">จากช่างทั้งหมด {{ total_workers }} คน</small>
+                </div>
+                <div class="fs-1 text-info opacity-25"><i class="fa-solid fa-certificate"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Interactive Chart.js Visual Analytics Row -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card-custom p-4 bg-white shadow-sm h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-chart-area me-2 text-primary"></i> แนวโน้มการจองงานย้อนหลัง 6 เดือน (Monthly Booking Trend)</h6>
+                <span class="badge bg-primary-subtle text-primary rounded-pill small">Chart.js Realtime</span>
+            </div>
+            <div style="height: 250px;">
+                <canvas id="monthlyTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card-custom p-4 bg-white shadow-sm h-100">
+            <h6 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-chart-pie me-2 text-success"></i> สัดส่วนประเภทงานยอดนิยม</h6>
+            <div style="height: 250px; position: relative;">
+                <canvas id="categoryDonutChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Pending Approval Workers -->
+    <div class="col-lg-6">
+        <div class="card-custom p-4 bg-white h-100 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-user-clock me-2 text-warning"></i> ช่างที่รอการตรวจสอบ ({{ pending_workers }})</h5>
+                <a href="{% url 'dashboard:admin_workers' %}?status=PENDING" class="small text-primary text-decoration-none">ดูทั้งหมด</a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ชื่อช่าง</th>
+                            <th>เบอร์โทร</th>
+                            <th class="text-end">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for w in recent_pending_workers %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">{{ w.user.full_name }}</div>
+                                    <small class="text-muted">{{ w.user.email }}</small>
+                                </td>
+                                <td>{{ w.user.phone_number }}</td>
+                                <td class="text-end">
+                                    <form method="POST" action="{% url 'dashboard:admin_workers' %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="worker_id" value="{{ w.id }}">
+                                        <input type="hidden" name="action" value="APPROVE">
+                                        <button type="submit" class="btn btn-success btn-sm rounded-pill px-3">
+                                            อนุมัติ
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-3 text-muted">ไม่มีรายการช่างที่รอการอนุมัติ</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Reports -->
+    <div class="col-lg-6">
+        <div class="card-custom p-4 bg-white h-100 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-flag me-2 text-danger"></i> รายงานปัญหาที่รอจัดการ</h5>
+                <a href="{% url 'dashboard:admin_reports' %}" class="small text-primary text-decoration-none">ดูทั้งหมด</a>
+            </div>
+
+            <div class="d-flex flex-column gap-2">
+                {% for r in recent_reports %}
+                    <div class="p-3 border rounded-3 bg-light small">
+                        <div class="d-flex justify-content-between mb-1">
+                            <strong class="text-danger">รายงาน #{{ r.id }}</strong>
+                            <span class="text-muted">{{ r.created_at|date:"d M Y H:i" }}</span>
+                        </div>
+                        <div class="text-dark mb-1">{{ r.reason }}</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">ผู้รายงาน: {{ r.reporter.full_name }}</div>
+                    </div>
+                {% empty %}
+                    <div class="text-center py-4 text-muted small">
+                        ไม่มีรายงานปัญหาใหม่
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js CDN & Initialization -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Monthly Trend Line Chart
+    const trendCtx = document.getElementById('monthlyTrendChart').getContext('2d');
+    const trendLabels = {{ chart_trend_labels|safe }};
+    const trendData = {{ chart_trend_data|safe }};
+
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'จำนวนคำขอรับบริการ (งาน)',
+                data: trendData,
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.35,
+                pointBackgroundColor: '#2563eb',
+                pointRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 }
+                }
+            }
+        }
+    });
+
+    // 2. Category Doughnut Chart
+    const catCtx = document.getElementById('categoryDonutChart').getContext('2d');
+    const catLabels = {{ chart_cat_labels|safe }};
+    const catCounts = {{ chart_cat_counts|safe }};
+
+    new Chart(catCtx, {
+        type: 'doughnut',
+        data: {
+            labels: catLabels.length > 0 ? catLabels : ['ไม่มีข้อมูล'],
+            datasets: [{
+                data: catCounts.length > 0 ? catCounts : [1],
+                backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

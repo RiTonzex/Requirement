@@ -1,0 +1,667 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}รายละเอียดคำขอรับบริการ #{{ booking.id }} | ช่างใกล้บ้าน{% endblock %}
+
+{% block content %}
+<!-- Top Sticky/Header Quick Action Bar (No scroll required!) -->
+<div class="bg-dark text-white py-3 border-bottom border-secondary border-opacity-25 shadow-sm">
+    <div class="container">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                    <h3 class="fw-bold mb-0 text-white">คำขอรับบริการ #{{ booking.id }}</h3>
+                    {% if booking.status == 'REQUESTED' %}
+                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill"><i class="fa-solid fa-clock me-1"></i> รอดำเนินการตอบรับ</span>
+                    {% elif booking.status == 'ACCEPTED' %}
+                        <span class="badge bg-primary px-3 py-2 rounded-pill"><i class="fa-solid fa-handshake me-1"></i> ช่างตอบรับงานแล้ว</span>
+                    {% elif booking.status == 'IN_PROGRESS' %}
+                        <span class="badge bg-info text-white px-3 py-2 rounded-pill"><i class="fa-solid fa-screwdriver-wrench me-1"></i> กำลังดำเนินการซ่อม</span>
+                    {% elif booking.status == 'COMPLETED' %}
+                        <span class="badge bg-success px-3 py-2 rounded-pill"><i class="fa-solid fa-circle-check me-1"></i> เสร็จสิ้นสมบูรณ์</span>
+                    {% elif booking.status == 'CANCELLED' %}
+                        <span class="badge bg-danger px-3 py-2 rounded-pill"><i class="fa-solid fa-xmark me-1"></i> ยกเลิกแล้ว</span>
+                    {% endif %}
+                    
+                    <!-- Top Price Pill -->
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 px-3 py-2 rounded-pill fs-6 fw-bold">
+                        <i class="fa-solid fa-coins me-1"></i> ฿{{ booking.final_price|floatformat:2 }} <small class="text-white-50 fw-normal">{{ booking.service_price_unit }}</small>
+                    </span>
+                </div>
+                <p class="text-white-50 mb-0 small">ประเภทงาน: <strong class="text-white">{{ booking.all_categories_display }}</strong> | นัดหมาย: {{ booking.preferred_date|default:"ตามที่ตกลง" }} ({{ booking.get_preferred_time_slot_display }})</p>
+            </div>
+
+            <!-- Top Action Controls (NO SCROLLING NEEDED) -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                {% if is_worker or user.is_admin_user %}
+                    {% if booking.status == 'REQUESTED' %}
+                        <form method="POST" action="{% url 'bookings:update_status' booking.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="ACCEPTED">
+                            <button type="submit" class="btn btn-success rounded-pill px-3 py-2 fw-bold shadow-sm">
+                                <i class="fa-solid fa-handshake me-1"></i> ตอบรับงานนี้
+                            </button>
+                        </form>
+                        <form method="POST" action="{% url 'bookings:update_status' booking.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="CANCELLED">
+                            <button type="submit" class="btn btn-outline-danger rounded-pill px-3 py-2 small" onclick="return confirm('ยืนยันปฏิเสธงานนี้?');">
+                                ปฏิเสธ
+                            </button>
+                        </form>
+                    {% elif booking.status == 'ACCEPTED' %}
+                        <form method="POST" action="{% url 'bookings:update_status' booking.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="IN_PROGRESS">
+                            <button type="submit" class="btn btn-info text-white rounded-pill px-3 py-2 fw-bold shadow-sm">
+                                <i class="fa-solid fa-screwdriver-wrench me-1"></i> เริ่มเข้าปฏิบัติงาน
+                            </button>
+                        </form>
+                    {% elif booking.status == 'IN_PROGRESS' %}
+                        <button type="button" class="btn btn-success rounded-pill px-3 py-2 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#completeJobModal">
+                            <i class="fa-solid fa-circle-check me-1"></i> แจ้งงานเสร็จสิ้น & แนบรูปผลงาน
+                        </button>
+                    {% elif booking.status == 'COMPLETED' %}
+                        {% if booking.payment_status == 'SLIP_UPLOADED' %}
+                            <button type="button" class="btn btn-warning text-dark rounded-pill px-3 py-2 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#verifyPaymentModal">
+                                <i class="fa-solid fa-receipt me-1"></i> ตรวจสอบสลิป & ยืนยันรับเงิน
+                            </button>
+                        {% elif booking.payment_status == 'PAID' %}
+                            <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 px-3 py-2 rounded-pill small">
+                                <i class="fa-solid fa-check-circle me-1"></i> ได้รับเงินเรียบร้อยแล้ว
+                            </span>
+                        {% endif %}
+                        <a href="{% url 'bookings:invoice' booking.id %}" target="_blank" class="btn btn-outline-success rounded-pill px-3 py-2 fw-semibold bg-white shadow-sm">
+                            <i class="fa-solid fa-file-invoice-dollar me-1"></i> พิมพ์ใบเสร็จ
+                        </a>
+                    {% endif %}
+
+                    {% if booking.status != 'CANCELLED' and booking.status != 'COMPLETED' %}
+                        <button class="btn btn-outline-warning rounded-pill px-3 py-2 fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#editPriceCollapse" aria-expanded="false">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> แก้ไขเรทราคา
+                        </button>
+                    {% endif %}
+
+                {% elif is_customer %}
+                    {% if booking.status == 'REQUESTED' %}
+                        <form method="POST" action="{% url 'bookings:update_status' booking.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="CANCELLED">
+                            <button type="submit" class="btn btn-outline-danger rounded-pill px-3 py-2" onclick="return confirm('ยืนยันยกเลิกคำขอนี้?');">
+                                <i class="fa-solid fa-xmark me-1"></i> ยกเลิกคำขอ
+                            </button>
+                        </form>
+                    {% elif booking.status == 'COMPLETED' %}
+                        {% if booking.payment_status == 'UNPAID' %}
+                            <button type="button" class="btn btn-primary-custom rounded-pill px-3 py-2 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#paymentModal">
+                                <i class="fa-solid fa-qrcode me-1"></i> จ่ายเงินด้วย PromptPay
+                            </button>
+                        {% elif booking.payment_status == 'SLIP_UPLOADED' %}
+                            <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-50 px-3 py-2 rounded-pill small">
+                                <i class="fa-solid fa-hourglass-half me-1"></i> แนบสลิปแล้ว - รอช่างยืนยัน
+                            </span>
+                        {% elif booking.payment_status == 'PAID' %}
+                            <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 px-3 py-2 rounded-pill small">
+                                <i class="fa-solid fa-check-circle me-1"></i> ชำระเงินเรียบร้อยแล้ว
+                            </span>
+                        {% endif %}
+                        <a href="{% url 'bookings:invoice' booking.id %}" target="_blank" class="btn btn-outline-success rounded-pill px-3 py-2 fw-semibold bg-white shadow-sm">
+                            <i class="fa-solid fa-file-invoice-dollar me-1"></i> ใบเสร็จรับเงิน
+                        </a>
+                        {% if not existing_review %}
+                            <a href="{% url 'workers:detail' booking.worker.id %}#reviews-section" class="btn btn-warning text-dark rounded-pill px-3 py-2 fw-bold shadow-sm">
+                                <i class="fa-solid fa-star me-1"></i> รีวิวให้คะแนน
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+
+                <a href="{% url 'bookings:chat' booking.id %}" class="btn btn-primary-custom rounded-pill px-3 py-2 shadow-sm">
+                    <i class="fa-solid fa-comments me-1"></i> แชท
+                </a>
+                
+                {% if is_customer %}
+                    <a href="{% url 'dashboard:customer_dashboard' %}" class="btn btn-outline-light rounded-pill px-3 py-2">
+                        <i class="fa-solid fa-arrow-left me-1"></i> แดชบอร์ด
+                    </a>
+                {% elif is_worker %}
+                    <a href="{% url 'dashboard:worker_dashboard' %}" class="btn btn-outline-light rounded-pill px-3 py-2">
+                        <i class="fa-solid fa-arrow-left me-1"></i> แดชบอร์ด
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row g-4">
+        <!-- Main Details Column -->
+        <div class="col-lg-8">
+
+            <!-- 1. Top Price Rate & Quick Quotation Box -->
+            <div class="card-custom p-3 p-md-4 mb-4 shadow-sm border border-success border-opacity-25 bg-white">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="fa-solid fa-coins me-2 text-success"></i> อัตราค่าบริการและราคาที่ตกลง
+                        </h5>
+                    </div>
+                    {% if is_worker or user.is_admin_user %}
+                        {% if booking.status != 'CANCELLED' %}
+                            <button class="btn btn-outline-success btn-sm rounded-pill px-3 fw-semibold shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#editPriceCollapse" aria-expanded="false">
+                                <i class="fa-solid fa-pen-to-square me-1"></i> ปรับราคาหน้างาน
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+
+                <div class="p-3 bg-success bg-opacity-10 rounded-3 border border-success border-opacity-25 d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
+                    <div>
+                        <div class="small text-muted mb-1 d-flex flex-wrap align-items-center gap-1">
+                            {% if booking.agreed_price %}
+                                <span class="badge bg-success px-2 py-1"><i class="fa-solid fa-handshake me-1"></i> ราคาที่ตกลงกัน</span>
+                            {% else %}
+                                <span class="badge bg-secondary px-2 py-1"><i class="fa-solid fa-tag me-1"></i> ราคาเริ่มต้นประเมินรวม</span>
+                            {% endif %}
+                            <span class="text-dark fw-semibold ms-1">ประเภทงาน:</span>
+                            {% for cat in booking.all_categories %}
+                                <span class="badge bg-white text-dark border">{{ cat.category_name }}</span>
+                            {% endfor %}
+                        </div>
+                        <div class="fs-3 fw-bold text-success">
+                            ฿{{ booking.final_price|floatformat:2 }} <span class="fs-6 fw-normal text-muted">{{ booking.service_price_unit }}</span>
+                        </div>
+                        {% if booking.price_note %}
+                            <div class="small text-dark mt-1">
+                                <i class="fa-solid fa-circle-info text-primary me-1"></i> <strong>หมายเหตุ:</strong> {{ booking.price_note }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="text-end text-muted small">
+                        <div><i class="fa-solid fa-shield-check text-success me-1"></i> ราคารวมค่าบริการตามตกลง</div>
+                        <div style="font-size: 0.75rem;">อัปเดต: {{ booking.updated_at|date:"d/m/Y H:i น." }}</div>
+                    </div>
+                </div>
+
+                <!-- Worker inline price adjustment form -->
+                {% if is_worker or user.is_admin_user %}
+                    <div class="collapse mt-3" id="editPriceCollapse">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <h6 class="fw-bold mb-2 text-dark"><i class="fa-solid fa-sliders me-1 text-primary"></i> ระบุเรทราคาใหม่ตามสภาพหน้างาน</h6>
+                            <form method="POST" action="{% url 'bookings:update_price' booking.id %}">
+                                {% csrf_token %}
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-5">
+                                        <label class="form-label small fw-semibold text-muted mb-1">ราคาค่าบริการใหม่ (บาท):</label>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text bg-white">฿</span>
+                                            <input type="number" step="0.50" min="0" name="agreed_price" class="form-control" value="{{ booking.final_price|floatformat:2 }}" required placeholder="ระบุจำนวนเงิน">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label small fw-semibold text-muted mb-1">หมายเหตุค่าใช้จ่าย (ถ้ามี):</label>
+                                        <input type="text" name="price_note" class="form-control form-control-sm" value="{{ booking.price_note|default:'' }}" placeholder="เช่น เพิ่มค่าอะไหล่, ลดราคาพิเศษ">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="submit" class="btn btn-success btn-sm w-100 rounded-3 fw-bold">
+                                            <i class="fa-solid fa-check me-1"></i> บันทึก
+                                        </button>
+                                    </div>
+                                </div>
+                                <small class="text-muted mt-2 d-block" style="font-size: 0.75rem;">
+                                    * เมื่อบันทึกราคาใหม่ ยอดบนใบเสร็จรับเงินจะปรับตามยอดนี้โดยอัตโนมัติ
+                                </small>
+                            </form>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- 2. Interactive 5-Step Visual Progress Stepper -->
+            <div class="card-custom p-3 p-md-4 mb-4 shadow-sm border-0 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="fa-solid fa-list-check me-2 text-primary"></i> ติดตามขั้นตอนการดำเนินงาน (5 ขั้นตอน)</h5>
+                    <span class="badge bg-light text-dark border px-3 py-1 rounded-pill small">
+                        สถานะ: <strong class="text-primary">{{ booking.get_status_display }}</strong>
+                    </span>
+                </div>
+                
+                {% if booking.status == 'CANCELLED' %}
+                    <div class="alert alert-danger rounded-4 d-flex align-items-center gap-3 mb-0">
+                        <i class="fa-solid fa-circle-xmark fs-2 text-danger"></i>
+                        <div>
+                            <strong class="d-block">คำขอรับบริการนี้ถูกยกเลิกแล้ว</strong>
+                            <span class="small">หากมีข้อสงสัย สามารถติดต่อพูดคุยผ่านห้องแชทได้ครับ</span>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="position-relative py-2">
+                        <div class="row text-center g-1">
+                            {% for step in status_steps %}
+                                <div class="col" style="flex: 1;">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center mb-2 shadow-sm position-relative
+                                            {% if step.done %}
+                                                bg-success text-white shadow-success
+                                            {% elif step.active %}
+                                                bg-primary text-white ring-4 shadow-primary
+                                            {% else %}
+                                                bg-light text-muted border
+                                            {% endif %}" 
+                                            style="width: 44px; height: 44px; font-size: 1.1rem; transition: all 0.3s; z-index: 2;">
+                                            {% if step.done %}
+                                                <i class="fa-solid fa-check"></i>
+                                            {% else %}
+                                                <i class="fa-solid {{ step.icon }}"></i>
+                                            {% endif %}
+                                        </div>
+                                        <span class="small fw-bold {% if step.active %}text-primary{% elif step.done %}text-dark{% else %}text-muted{% endif %}" style="font-size: 0.76rem;">
+                                            {{ step.label }}
+                                        </span>
+                                        {% if step.active %}
+                                            <span class="badge bg-primary-subtle text-primary rounded-pill mt-1" style="font-size: 0.65rem;">กำลังดำเนินการ</span>
+                                        {% elif step.done %}
+                                            <span class="badge bg-success-subtle text-success rounded-pill mt-1" style="font-size: 0.65rem;">เสร็จสิ้น</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- 3. Problem Breakdown & Attached Photo (Compact 2-Column) -->
+            <div class="card-custom p-3 p-md-4 mb-4 shadow-sm">
+                <h5 class="fw-bold mb-3"><i class="fa-solid fa-file-lines me-2 text-primary"></i> รายละเอียดงานที่แจ้งซ่อม</h5>
+                
+                <div class="row g-3 align-items-start">
+                    <div class="col-md-7">
+                        <div class="p-3 bg-light rounded-3 mb-3">
+                            <div class="small text-muted mb-1 fw-semibold">รายละเอียดปัญหา:</div>
+                            <p class="mb-0 text-dark" style="white-space: pre-line; font-size: 0.95rem;">{{ booking.details }}</p>
+                        </div>
+                        <div class="small mb-2">
+                            <span class="text-muted"><i class="fa-solid fa-location-dot text-danger me-1"></i> สถานที่:</span>
+                            <span class="fw-semibold text-dark">{{ booking.address_note|default:"ไม่ระบุ" }}</span>
+                        </div>
+                        <div class="small">
+                            <span class="text-muted"><i class="fa-regular fa-calendar-check text-primary me-1"></i> นัดหมาย:</span>
+                            <span class="fw-semibold text-dark">{{ booking.preferred_date|default:"ตามที่ตกลงกัน" }} ({{ booking.get_preferred_time_slot_display }})</span>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-5">
+                        <div class="small text-muted mb-1 fw-semibold"><i class="fa-solid fa-camera text-primary me-1"></i> รูปถ่ายหน้างาน:</div>
+                        <div class="position-relative rounded-3 overflow-hidden shadow-sm border bg-light text-center" style="max-height: 180px;">
+                            <img src="{{ booking.display_problem_image_url }}" class="w-100" style="height: 150px; object-fit: cover;" alt="Problem Image">
+                            <a href="{{ booking.display_problem_image_url }}" target="_blank" class="btn btn-dark btn-sm bg-opacity-75 position-absolute bottom-0 end-0 m-1 rounded-pill shadow py-1 px-2" style="font-size: 0.72rem;">
+                                <i class="fa-solid fa-expand me-1"></i> ขยายรูป
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Before & After Photo Proof Showcase (ภาพเปรียบเทียบผลงาน ก่อนซ่อม - หลังซ่อม) -->
+            {% if booking.status == 'COMPLETED' or booking.completion_image %}
+                <div class="card-custom p-3 p-md-4 mb-4 shadow-sm border border-primary border-opacity-25 bg-white">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="fa-solid fa-images me-2 text-primary"></i> ภาพถ่ายเปรียบเทียบผลงาน (Before & After)
+                        </h5>
+                        <span class="badge bg-success-subtle text-success border border-success border-opacity-25 rounded-pill px-3 py-1">
+                            <i class="fa-solid fa-check-circle me-1"></i> ปฏิบัติงานเสร็จสิ้น
+                        </span>
+                    </div>
+
+                    <div class="row g-3">
+                        <!-- Before Photo -->
+                        <div class="col-md-6">
+                            <div class="card border rounded-3 overflow-hidden shadow-sm h-100">
+                                <div class="card-header bg-secondary text-white py-1 px-3 small fw-bold d-flex justify-content-between align-items-center">
+                                    <span><i class="fa-solid fa-circle-exclamation me-1"></i> ก่อนซ่อม (Before - จุดที่ชำรุด)</span>
+                                </div>
+                                <div class="position-relative bg-light text-center" style="height: 190px;">
+                                    <img src="{{ booking.display_problem_image_url }}" class="w-100 h-100" style="object-fit: cover;" alt="Before Photo">
+                                    <a href="{{ booking.display_problem_image_url }}" target="_blank" class="btn btn-dark btn-sm bg-opacity-75 position-absolute bottom-0 end-0 m-2 rounded-pill shadow py-1 px-2" style="font-size: 0.72rem;">
+                                        <i class="fa-solid fa-expand me-1"></i> ดูภาพเต็ม
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- After Photo -->
+                        <div class="col-md-6">
+                            <div class="card border-success border rounded-3 overflow-hidden shadow-sm h-100">
+                                <div class="card-header bg-success text-white py-1 px-3 small fw-bold d-flex justify-content-between align-items-center">
+                                    <span><i class="fa-solid fa-circle-check me-1"></i> หลังซ่อม (After - ผลงานเสร็จสมบูรณ์)</span>
+                                    <span class="badge bg-white text-success rounded-pill" style="font-size: 0.65rem;">เสร็จสมบูรณ์</span>
+                                </div>
+                                <div class="position-relative bg-light text-center" style="height: 190px;">
+                                    <img src="{{ booking.display_completion_image_url }}" class="w-100 h-100" style="object-fit: cover;" alt="After Photo">
+                                    <a href="{{ booking.display_completion_image_url }}" target="_blank" class="btn btn-dark btn-sm bg-opacity-75 position-absolute bottom-0 end-0 m-2 rounded-pill shadow py-1 px-2" style="font-size: 0.72rem;">
+                                        <i class="fa-solid fa-expand me-1"></i> ดูภาพเต็ม
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if booking.completion_note %}
+                        <div class="mt-3 p-3 bg-light rounded-3 border-start border-4 border-success">
+                            <div class="small fw-bold text-success mb-1"><i class="fa-solid fa-clipboard-check me-1"></i> บันทึกสรุปงานของช่าง:</div>
+                            <p class="mb-0 text-dark small" style="white-space: pre-line;">{{ booking.completion_note }}</p>
+                        </div>
+                    {% endif %}
+
+                    {% if is_worker or user.is_admin_user %}
+                        <div class="mt-3 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <span class="small text-muted"><i class="fa-solid fa-sparkles text-warning me-1"></i> นำภาพผลงาน Before & After นี้ไปโชว์ใน Portfolio ของคุณ</span>
+                            <form method="POST" action="{% url 'bookings:sync_portfolio' booking.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold">
+                                    <i class="fa-solid fa-plus me-1"></i> บันทึกเข้า Portfolio ผลงานของฉัน
+                                </button>
+                            </form>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            <!-- 5. Payment & Slip Verification (การชำระเงินและสลิป) -->
+            <div class="card-custom p-3 p-md-4 mb-4 shadow-sm bg-white border">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="fa-solid fa-credit-card me-2 text-primary"></i> สถานะการชำระเงิน
+                    </h5>
+                    {% if booking.payment_status == 'PAID' %}
+                        <span class="badge bg-success rounded-pill px-3 py-1 fs-6">
+                            <i class="fa-solid fa-circle-check me-1"></i> ชำระเงินเรียบร้อยแล้ว
+                        </span>
+                    {% elif booking.payment_status == 'SLIP_UPLOADED' %}
+                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1 fs-6">
+                            <i class="fa-solid fa-hourglass-half me-1"></i> แนบสลิปแล้ว - รอช่างยืนยัน
+                        </span>
+                    {% else %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger border-opacity-25 rounded-pill px-3 py-1 fs-6">
+                            <i class="fa-solid fa-clock me-1"></i> ยังไม่ชำระเงิน
+                        </span>
+                    {% endif %}
+                </div>
+
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-7">
+                        <div class="d-flex align-items-baseline gap-2 mb-1">
+                            <span class="text-muted small">ยอดชำระสุทธิ:</span>
+                            <span class="fs-3 fw-bold text-success">฿{{ booking.final_price|floatformat:2 }}</span>
+                            <span class="small text-muted">{{ booking.service_price_unit }}</span>
+                        </div>
+                        <div class="small text-muted mb-2">
+                            <i class="fa-solid fa-building-columns me-1 text-primary"></i> <strong>พร้อมเพย์ช่าง:</strong> {{ booking.worker.effective_promptpay_number }} ({{ booking.worker.user.full_name }})
+                        </div>
+                        {% if booking.paid_at %}
+                            <div class="small text-success">
+                                <i class="fa-solid fa-calendar-check me-1"></i> <strong>วันที่ชำระเงิน:</strong> {{ booking.paid_at|date:"d/m/Y H:i น." }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-5 text-md-end">
+                        {% if is_customer %}
+                            {% if booking.payment_status == 'UNPAID' %}
+                                <button type="button" class="btn btn-primary-custom rounded-pill px-3 py-2 fw-semibold w-100 shadow-sm" data-bs-toggle="modal" data-bs-target="#paymentModal">
+                                    <i class="fa-solid fa-qrcode me-1"></i> ชำระผ่าน PromptPay / แนบสลิป
+                                </button>
+                            {% elif booking.payment_status == 'SLIP_UPLOADED' %}
+                                <div class="d-flex flex-column gap-1 align-items-md-end">
+                                    <span class="badge bg-light text-dark border p-2 text-start">
+                                        <i class="fa-solid fa-receipt text-success me-1"></i> แนบสลิปโอนแล้ว รอช่างกดยืนยัน
+                                    </span>
+                                    {% if booking.payment_slip %}
+                                        <a href="{{ booking.display_payment_slip_url }}" target="_blank" class="small text-decoration-none">
+                                            <i class="fa-solid fa-eye me-1"></i> ดูรูปสลิปที่แนบไว้
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            {% elif booking.payment_status == 'PAID' %}
+                                <a href="{% url 'bookings:invoice' booking.id %}" target="_blank" class="btn btn-outline-success rounded-pill px-3 py-2 fw-semibold">
+                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i> ดูใบเสร็จรับเงิน
+                                </a>
+                            {% endif %}
+                        {% elif is_worker or user.is_admin_user %}
+                            {% if booking.payment_status == 'SLIP_UPLOADED' %}
+                                <button type="button" class="btn btn-warning text-dark rounded-pill px-3 py-2 fw-bold w-100 shadow-sm" data-bs-toggle="modal" data-bs-target="#verifyPaymentModal">
+                                    <i class="fa-solid fa-receipt me-1"></i> ตรวจสอบสลิป & ยืนยันรับเงิน
+                                </button>
+                            {% elif booking.payment_status == 'PAID' %}
+                                <div class="text-success small fw-semibold">
+                                    <i class="fa-solid fa-shield-check me-1"></i> ยืนยันรับเงินแล้ว
+                                    {% if booking.payment_slip %}
+                                        <br><a href="{{ booking.display_payment_slip_url }}" target="_blank" class="text-muted small">ดูสลิป</a>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <form method="POST" action="{% url 'bookings:confirm_payment' booking.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-3 fw-semibold" onclick="return confirm('ยืนยันว่าลูกค้าได้ชำระเงินสดหรือโอนเรียบร้อยแล้ว?');">
+                                        <i class="fa-solid fa-check me-1"></i> ยืนยันได้รับเงินแล้ว (เงินสด/โอนตรง)
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Party Profile Column -->
+        <div class="col-lg-4">
+            
+            <!-- Contact Card -->
+            <div class="card-custom p-3 p-md-4 mb-4 shadow-sm">
+                {% if is_customer %}
+                    <h6 class="text-uppercase text-muted fw-bold small mb-3">ข้อมูลช่างผู้รับงาน</h6>
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <img src="{{ booking.worker.display_profile_image_url }}" class="rounded-circle shadow-sm border" style="width: 54px; height: 54px; object-fit: cover;" alt="Worker">
+                        <div>
+                            <h6 class="fw-bold mb-1">
+                                <a href="{% url 'workers:detail' booking.worker.id %}" class="text-dark text-decoration-none">
+                                    {{ booking.worker.user.full_name }}
+                                </a>
+                                {% if booking.worker.is_id_verified %}
+                                    <i class="fa-solid fa-circle-check text-info ms-1" title="ยืนยันตัวตนแล้ว"></i>
+                                {% endif %}
+                            </h6>
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for cat in booking.all_categories %}
+                                    <span class="badge bg-light text-secondary border small">{{ cat.category_name }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3 small">
+                        <div class="text-muted"><i class="fa-solid fa-phone text-primary me-2"></i> {{ booking.worker.user.phone_number|default:"ติดต่อผ่านแชท" }}</div>
+                        <div class="text-muted"><i class="fa-solid fa-clock text-primary me-2"></i> {{ booking.worker.working_hours|default:"จันทร์ - เสาร์" }}</div>
+                    </div>
+                {% else %}
+                    <h6 class="text-uppercase text-muted fw-bold small mb-3">ข้อมูลลูกค้าผู้ว่าจ้าง</h6>
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <img src="{{ booking.customer.avatar_url }}" class="rounded-circle shadow-sm border" style="width: 54px; height: 54px; object-fit: cover;" alt="Customer">
+                        <div>
+                            <h6 class="fw-bold mb-1">{{ booking.customer.full_name }}</h6>
+                            <span class="badge bg-secondary-subtle text-secondary small">ลูกค้าผู้ว่าจ้าง</span>
+                        </div>
+                    </div>
+                    <div class="mb-3 small">
+                        <div class="text-muted"><i class="fa-solid fa-phone text-primary me-2"></i> {{ booking.customer.phone_number|default:"ติดต่อผ่านแชท" }}</div>
+                        <div class="text-muted"><i class="fa-solid fa-envelope text-primary me-2"></i> {{ booking.customer.email }}</div>
+                    </div>
+                {% endif %}
+
+                <a href="{% url 'bookings:chat' booking.id %}" class="btn btn-primary-custom w-100 rounded-pill py-2 shadow-sm mb-2">
+                    <i class="fa-solid fa-comments me-2"></i> เปิดห้องสนทนา ({% if chat_messages_count > 0 %}{{ chat_messages_count }} ข้อความ{% else %}เริ่มคุย{% endif %})
+                </a>
+                <a href="{% url 'bookings:invoice' booking.id %}" target="_blank" class="btn btn-outline-secondary w-100 rounded-pill py-2 small">
+                    <i class="fa-solid fa-print me-2"></i> ดูใบเสนอราคา / ใบเสร็จรับเงิน
+                </a>
+            </div>
+
+            <!-- Warranty Guarantee Card -->
+            <div class="card-custom p-3 p-md-4 mb-4 shadow-sm border border-info border-opacity-25 bg-white">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <div class="rounded-circle bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 1.4rem;">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">การรับประกันผลงาน</h6>
+                        <small class="text-muted">{{ booking.warranty_days }} วัน คุ้มครองหลังจบงาน</small>
+                    </div>
+                </div>
+                <div class="p-2 px-3 rounded-3 bg-light border small mt-2">
+                    {% if booking.warranty_expires_at %}
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted">สิ้นสุดความคุ้มครอง:</span>
+                            <strong class="text-dark">{{ booking.warranty_expires_at|date:"d M Y" }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">สถานะ:</span>
+                            {% if booking.is_warranty_active %}
+                                <span class="badge bg-success text-white rounded-pill px-2 py-1">
+                                    <i class="fa-solid fa-shield-check me-1"></i> คุ้มครองอยู่ (เหลือ {{ booking.warranty_days_remaining }} วัน)
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary text-white rounded-pill px-2 py-1">หมดอายุความคุ้มครอง</span>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="text-muted" style="font-size: 0.8rem;">
+                            <i class="fa-solid fa-circle-info text-info me-1"></i> ความคุ้มครองจะเริ่มนับทันทีเมื่อช่างส่งมอบงานและชำระเงินเรียบร้อย
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Fast Tips Card -->
+            <div class="card-custom p-3 bg-light border">
+                <h6 class="fw-bold mb-2 small"><i class="fa-solid fa-lightbulb text-warning me-2"></i>ข้อแนะนำการใช้บริการ</h6>
+                <ul class="text-muted small ps-3 mb-0" style="font-size: 0.8rem;">
+                    <li class="mb-1">ตกลงเรทราคาและค่าอะไหล่ให้ชัดเจนก่อนเริ่มงาน</li>
+                    <li class="mb-1">เมื่อช่างทำงานเสร็จ ให้ตรวจรับงานก่อนกดยืนยัน</li>
+                    <li>หากเสร็จงานแล้ว สามารถดาวน์โหลดใบเสร็จรับเงิน/ใบรับประกันได้ทันที</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 1: Complete Job & Attach After Photo (สำหรับช่าง) -->
+<div class="modal fade" id="completeJobModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-circle-check me-2"></i>แจ้งงานเสร็จสิ้น & แนบรูปผลงาน</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'bookings:update_status' booking.id %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="COMPLETED">
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">เมื่อเสร็จงานแล้ว กรุณาแนบภาพผลงานหลังทำให้ลูกค้าตรวจรับ และบันทึกรายละเอียดสรุปงาน</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small"><i class="fa-solid fa-camera text-primary me-1"></i> แนบรูปภาพผลงานหลังทำเสร็จ (After Photo) <span class="text-muted fw-normal">(ถ้ามี)</span></label>
+                        <input type="file" name="completion_image" accept="image/*" class="form-control rounded-3">
+                        <small class="text-muted" style="font-size: 0.75rem;">ภาพนี้จะแสดงคู่กับภาพก่อนซ่อมในหน้ารายละเอียดงานและใบเสร็จ</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">บันทึกสรุปผลงานช่าง <span class="text-muted fw-normal">(ถ้ามี)</span></label>
+                        <textarea name="completion_note" rows="3" class="form-control rounded-3" placeholder="เช่น ซ่อมเปลี่ยนก๊อกน้ำและซีนยางเรียบร้อย ตรวจสอบระบบไม่พบการรั่วซึม..."></textarea>
+                    </div>
+
+                    <div class="p-3 bg-info bg-opacity-10 rounded-3 border border-info border-opacity-25 small text-dark">
+                        <i class="fa-solid fa-shield-halved text-info me-1"></i> งานนี้จะได้รับความคุ้มครองรับประกัน <strong>{{ booking.warranty_days }} วัน</strong> นับจากวันที่ลูกค้ายืนยันชำระเงิน
+                    </div>
+                </div>
+                <div class="modal-footer border-top bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold">
+                        <i class="fa-solid fa-check me-1"></i> ยืนยันแจ้งงานเสร็จสิ้น
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: PromptPay Payment & Slip Upload (สำหรับลูกค้า) -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-qrcode text-primary me-2"></i>ชำระเงินผ่าน PromptPay QR Code</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="bg-light p-3 rounded-4 border mb-3 d-inline-block shadow-sm">
+                    <div class="fw-bold small text-muted mb-2 text-uppercase">พร้อมเพย์มาตรฐาน ธนาคารแห่งประเทศไทย</div>
+                    <img src="{{ booking.promptpay_qr_svg }}" alt="PromptPay QR Code" class="img-fluid rounded-3 bg-white p-2 border" style="max-width: 220px;">
+                    <div class="mt-2 fw-bold text-primary fs-5">฿{{ booking.final_price|floatformat:2 }} บาท</div>
+                    <div class="small text-muted">{{ booking.worker.user.full_name }} ({{ booking.worker.effective_promptpay_number }})</div>
+                </div>
+
+                <form method="POST" action="{% url 'bookings:upload_slip' booking.id %}" enctype="multipart/form-data" class="text-start mt-2">
+                    {% csrf_token %}
+                    <label class="form-label fw-semibold small"><i class="fa-solid fa-receipt text-success me-1"></i> แนบรูปสลิปการโอนเงิน (Payment Slip) <span class="text-danger">*</span></label>
+                    <input type="file" name="payment_slip" accept="image/*" class="form-control rounded-3 mb-2" required>
+                    <small class="text-muted d-block mb-3" style="font-size: 0.75rem;">รองรับ JPG, PNG เมื่อแนบสลิปแล้ว ระบบจะแจ้งเตือนช่างเพื่อยืนยันยอดเงินทันที</small>
+
+                    <button type="submit" class="btn btn-primary-custom w-100 rounded-pill py-2 fw-bold shadow-sm">
+                        <i class="fa-solid fa-paper-plane me-1"></i> ส่งสลิปยืนยันการชำระเงิน
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 3: Verify Payment Slip (สำหรับช่างตรวจสอบสลิป) -->
+<div class="modal fade" id="verifyPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-receipt text-warning me-2"></i>ตรวจสอบสลิปและยืนยันการรับเงิน</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-3">
+                    <span class="small text-muted d-block mb-1">ยอดเงินที่ต้องได้รับ:</span>
+                    <span class="fs-4 fw-bold text-success">฿{{ booking.final_price|floatformat:2 }} บาท</span>
+                </div>
+
+                {% if booking.payment_slip %}
+                    <div class="text-center mb-3">
+                        <div class="small text-muted mb-1 fw-semibold">ภาพสลิปที่ลูกค้าแนบ:</div>
+                        <a href="{{ booking.display_payment_slip_url }}" target="_blank">
+                            <img src="{{ booking.display_payment_slip_url }}" class="img-fluid rounded-3 border shadow-sm" style="max-height: 250px;" alt="Slip Preview">
+                        </a>
+                        <div class="small text-muted mt-1">(คลิกที่ภาพเพื่อดูขนาดเต็ม)</div>
+                    </div>
+                {% else %}
+                    <div class="alert alert-light text-center small text-muted">ไม่พบไฟล์ภาพสลิป</div>
+                {% endif %}
+
+                <form method="POST" action="{% url 'bookings:confirm_payment' booking.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success w-100 rounded-pill py-2 fw-bold shadow-sm">
+                        <i class="fa-solid fa-circle-check me-1"></i> ยืนยันว่ายอดเงินเข้าแล้ว (Confirm Payment)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

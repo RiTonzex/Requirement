@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}ผู้ดูแลระบบ (Admin Panel) | ช่างใกล้บ้าน{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="row g-0">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2 admin-sidebar">
+            <div class="px-3 pb-3 mb-3 border-bottom border-secondary">
+                <div class="text-white-50 small">เข้าสู่ระบบในฐานะ</div>
+                <div class="fw-bold text-white fs-6">{{ user.full_name }}</div>
+                <span class="badge bg-danger rounded-pill mt-1">Super Admin</span>
+            </div>
+
+            <nav class="d-flex flex-column gap-1">
+                <a href="{% url 'dashboard:admin_dashboard' %}" class="admin-nav-item {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
+                    <i class="fa-solid fa-gauge-high"></i> แดชบอร์ดภาพรวม
+                </a>
+                <a href="{% url 'dashboard:admin_workers' %}" class="admin-nav-item {% if request.resolver_match.url_name == 'admin_workers' %}active{% endif %}">
+                    <i class="fa-solid fa-user-gear"></i> จัดการและอนุมัติช่าง
+                </a>
+                <a href="{% url 'dashboard:admin_categories' %}" class="admin-nav-item {% if request.resolver_match.url_name == 'admin_categories' %}active{% endif %}">
+                    <i class="fa-solid fa-list-check"></i> จัดการหมวดหมู่
+                </a>
+                <a href="{% url 'dashboard:admin_users' %}" class="admin-nav-item {% if request.resolver_match.url_name == 'admin_users' %}active{% endif %}">
+                    <i class="fa-solid fa-users"></i> ผู้ใช้งานทั้งหมด
+                </a>
+                <a href="{% url 'dashboard:admin_reports' %}" class="admin-nav-item {% if request.resolver_match.url_name == 'admin_reports' %}active{% endif %}">
+                    <i class="fa-solid fa-flag"></i> รายงานปัญหา
+                </a>
+                <a href="{% url 'dashboard:admin_reviews' %}" class="admin-nav-item {% if request.resolver_match.url_name == 'admin_reviews' %}active{% endif %}">
+                    <i class="fa-solid fa-star"></i> ตรวจสอบรีวิว
+                </a>
+                <a href="{% url 'dashboard:admin_stats' %}" class="admin-nav-item {% if request.resolver_match.url_name == 'admin_stats' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-pie"></i> สถิติและรายงาน
+                </a>
+            </nav>
+        </div>
+
+        <!-- Admin Main Content Area -->
+        <div class="col-lg-10 p-4 p-md-5 bg-light" style="min-height: calc(100vh - 70px);">
+            {% block admin_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}
