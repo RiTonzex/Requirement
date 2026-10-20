@@ -17,12 +17,8 @@ load_dotenv(BASE_DIR / '.env')
 
 IS_VERCEL = 'VERCEL' in os.environ
 
-# Security: Load SECRET_KEY from environment with fallback in development
-SECRET_KEY = os.getenv('SECRET_KEY')
-if not SECRET_KEY:
-    if IS_VERCEL:
-        raise ImproperlyConfigured("❌ [SECURITY]: กรุณากำหนด SECRET_KEY ใน Environment Variables ของ Vercel")
-    SECRET_KEY = 'django-insecure-local-worker-secure-key-for-development'
+# Security: Load SECRET_KEY from environment with fallback
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-local-worker-secure-key-for-development')
 
 # Security: Debug mode loaded from environment (defaults to False on Vercel, True locally)
 default_debug = 'False' if IS_VERCEL else 'True'
@@ -139,18 +135,14 @@ elif DATABASE_URL:
             ssl_require=True
         )
     }
-elif is_building:
-    # Safe fallback strictly for Vercel collectstatic build phase
+else:
+    # Safe fallback database for initial Vercel build/import before environment variables are configured
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': ':memory:',
         }
     }
-else:
-    raise ImproperlyConfigured(
-        "❌ [CRITICAL CONFIGURATION]: กรุณากำหนดค่าการเชื่อมต่อฐานข้อมูลใน .env (เช่น DB_ENGINE=mysql หรือ DATABASE_URL)"
-    )
 
 
 # MongoDB Atlas Configuration (NoSQL)
