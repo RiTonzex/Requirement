@@ -29,7 +29,6 @@ ENV/
 Thumbs.db
 
 # Static collection
-staticfiles/
 staticfiles_build/
 
 # Vercel
