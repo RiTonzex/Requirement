@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}หน้าแรก | ระบบประกาศและค้นหาช่างรับจ้างท้องถิ่น (ช่างใกล้บ้าน){% endblock %}
+
+{% block content %}
+<!-- Hero Banner -->
+<section class="hero-section">
+    <div class="container text-center py-4">
+        <span class="badge bg-white-subtle text-white px-3 py-2 rounded-pill fw-normal mb-3 border border-white border-opacity-25">
+            <i class="fa-solid fa-sparkles me-1 text-warning"></i> แพลตฟอร์มค้นหาช่างฝีมืออันดับหนึ่งในท้องถิ่น
+        </span>
+        <h1 class="display-5 fw-bold mb-3">ค้นหาช่างฝีมือใกล้บ้านคุณ ง่าย รวดเร็ว ไว้ใจได้</h1>
+        <p class="lead opacity-90 mb-5 mx-auto" style="max-width: 650px;">
+            รวมช่างไฟฟ้า ช่างประปา ช่างแอร์ ช่างก่อสร้าง และช่างซ่อมบำรุงทุกประเภท ครอบคลุม 77 จังหวัด
+        </p>
+
+        <!-- Search Bar Component -->
+        <div class="hero-search-box mx-auto text-start" style="max-width: 920px;">
+            <form action="{% url 'core:search' %}" method="GET" class="row g-2 align-items-center">
+                <div class="col-lg-4 col-md-12">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                        <input type="text" name="keyword" class="form-control border-0 ps-0" placeholder="พิมพ์ชื่องาน, ทักษะ หรือชื่อช่าง...">
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6 border-start border-light-subtle">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-0 text-muted"><i class="fa-solid fa-list-check"></i></span>
+                        <select name="category" class="form-select border-0 ps-0">
+                            <option value="">ทุกหมวดหมู่งาน</option>
+                            {% for cat in global_categories %}
+                                <option value="{{ cat.id }}">{{ cat.category_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6 border-start border-light-subtle">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-0 text-muted"><i class="fa-solid fa-location-dot"></i></span>
+                        <select name="province" class="form-select border-0 ps-0">
+                            <option value="">ทุกจังหวัด (77 จังหวัด)</option>
+                            {% for prov in global_provinces %}
+                                <option value="{{ prov.id }}">{{ prov.province_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="col-lg-2 col-md-12">
+                    <button type="submit" class="btn btn-primary-custom w-100 rounded-pill py-2">
+                        ค้นหาช่าง
+                    </button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+</section>
+
+<!-- Categories Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end mb-4">
+            <div>
+                <h6 class="text-primary fw-bold text-uppercase tracking-wide mb-1">หมวดหมู่บริการ</h6>
+                <h3 class="fw-bold mb-0">ประเภทงานช่างยอดนิยม</h3>
+            </div>
+            <a href="{% url 'core:search' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                ดูทั้งหมด <i class="fa-solid fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-5 g-3">
+            {% for cat in categories %}
+                <div class="col">
+                    <a href="{% url 'core:search' %}?category={{ cat.id }}" class="category-card">
+                        <div class="category-icon-wrapper">
+                            <i class="fa-solid {{ cat.icon|default:'fa-wrench' }}"></i>
+                        </div>
+                        <h6 class="fw-semibold mb-1 text-center" style="font-size: 0.95rem;">{{ cat.category_name }}</h6>
+                        <small class="text-muted">{{ cat.worker_count }} ช่างพร้อมบริการ</small>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Featured Workers Section -->
+<section class="py-5 bg-white border-top border-bottom border-slate-200">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end mb-4">
+            <div>
+                <h6 class="text-primary fw-bold text-uppercase tracking-wide mb-1">ช่างแนะนำ</h6>
+                <h3 class="fw-bold mb-0">ช่างฝีมือดี คะแนนรีวิวสูง</h3>
+            </div>
+            <a href="{% url 'core:search' %}?sort=rating" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                ดูช่างทั้งหมด <i class="fa-solid fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {% for worker in featured_workers %}
+                <div class="col">
+                    <div class="worker-card p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="d-flex gap-3 align-items-center">
+                                <img src="{{ worker.display_profile_image_url }}" alt="{{ worker.user.full_name }}" class="worker-avatar shadow-sm" style="object-fit: cover;">
+
+                                <div>
+                                    <h5 class="fw-bold mb-1">
+                                        <a href="{% url 'workers:detail' worker.id %}" class="text-dark text-decoration-none hover-primary">
+                                            {{ worker.user.full_name }}
+                                        </a>
+                                        {% if worker.is_id_verified %}
+                                            <i class="fa-solid fa-circle-check text-info ms-1" style="font-size: 0.9rem;" title="ช่างยืนยันตัวตนแล้ว"></i>
+                                        {% endif %}
+                                    </h5>
+                                    <div class="d-flex align-items-center gap-1 text-muted small">
+                                        {% if worker.review_count > 0 %}
+                                            <span class="star-rating">
+                                                <i class="fa-solid fa-star text-warning"></i>
+                                                <strong>{{ worker.average_rating }}</strong>
+                                            </span>
+                                            <span>({{ worker.review_count }} รีวิว)</span>
+                                        {% else %}
+                                            <span class="badge bg-success-subtle text-success rounded-pill px-2 py-0" style="font-size: 0.75rem;">
+                                                <i class="fa-solid fa-sparkles me-1"></i>ช่างใหม่
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Save Button -->
+                            {% if user.is_authenticated and not user.is_worker %}
+                                <button type="button" class="btn-bookmark btn-ajax-save {% if worker.id in user_saved_worker_ids %}active{% endif %}" data-worker-id="{{ worker.id }}" title="บันทึกช่างนี้">
+                                    <i class="fa-{% if worker.id in user_saved_worker_ids %}solid fa-heart text-danger{% else %}regular fa-heart{% endif %}"></i>
+                                </button>
+                            {% endif %}
+                        </div>
+
+                        <!-- Bio Snippet -->
+                        <p class="text-muted small mb-3 text-truncate-2" style="min-height: 40px;">
+                            {{ worker.bio|default:"ช่างฝีมือคุณภาพ พร้อมให้บริการงานช่างทุกระดับ ติดต่อสอบถามรายละเอียดได้ครับ"|truncatechars:95 }}
+                        </p>
+
+                        <!-- Services & Price -->
+                        <div class="mb-3">
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                {% for s in worker.services_list|slice:":2" %}
+                                    <span class="badge bg-primary-subtle text-primary rounded-pill font-normal py-1 px-2">
+                                        {{ s.category.category_name }}
+                                    </span>
+                                {% endfor %}
+                                <span class="badge bg-info-subtle text-info rounded-pill font-normal py-1 px-2">
+                                    <i class="fa-solid fa-shield-halved me-1"></i> ประกัน {{ worker.warranty_days }} วัน
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center text-muted small">
+                                <span><i class="fa-solid fa-location-dot me-1 text-danger"></i> 
+                                    {% for area in worker.service_areas_list|slice:":2" %}
+                                        {{ area.province.province_name }}{% if not forloop.last %}, {% endif %}
+                                    {% empty %}
+                                        ทั่วประเทศ
+                                    {% endfor %}
+                                </span>
+                                {% with min_service=worker.min_starting_service %}
+                                    {% if min_service %}
+                                        <span class="text-success fw-bold">เริ่ม ฿{{ min_service.starting_price|floatformat:0 }} <small class="text-muted fw-normal">{{ min_service.price_unit|default:"/งาน" }}</small></span>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+
+                        <!-- Card Action -->
+                        <div class="mt-auto pt-3 border-top d-flex gap-2">
+                            <a href="{% url 'workers:detail' worker.id %}" class="btn btn-outline-secondary btn-sm flex-fill rounded-pill text-center {% if user.is_worker %}w-100{% endif %}">
+                                <i class="fa-solid fa-id-card me-1"></i> ดูโปรไฟล์
+                            </a>
+                            {% if not user.is_worker %}
+                                <a href="{% url 'workers:detail' worker.id %}#booking-section" class="btn btn-primary-custom btn-sm flex-fill rounded-pill text-center">
+                                    ขอรับบริการ
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12 text-center py-5 text-muted">
+                    <i class="fa-solid fa-user-clock fs-1 mb-3"></i>
+                    <p>ยังไม่มีข้อมูลช่างที่ได้รับการอนุมัติในระบบ</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Stats Counter -->
+<section class="py-5 bg-dark text-white">
+    <div class="container">
+        <div class="row g-4 text-center">
+            <div class="col-6 col-md-3">
+                <div class="display-6 fw-bold text-warning mb-1">{{ total_workers }}</div>
+                <div class="text-white-50">ช่างฝีมือในระบบ</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="display-6 fw-bold text-info mb-1">{{ total_categories }}</div>
+                <div class="text-white-50">หมวดหมู่งานบริการ</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="display-6 fw-bold text-success mb-1">{{ total_provinces }}</div>
+                <div class="text-white-50">จังหวัดทั่วประเทศ</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="display-6 fw-bold text-primary mb-1">{{ total_reviews }}</div>
+                <div class="text-white-50">รีวิวจากลูกค้าจริง</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Recent Customer Reviews -->
+{% if recent_reviews %}
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h6 class="text-primary fw-bold text-uppercase tracking-wide mb-1">เสียงตอบรับ</h6>
+            <h3 class="fw-bold">รีวิวความประทับใจจากลูกค้า</h3>
+        </div>
+
+        <div class="row g-4">
+            {% for rev in recent_reviews %}
+                <div class="col-md-6 col-lg-3">
+                    <div class="card-custom p-4 h-100 d-flex flex-column">
+                        <div class="d-flex text-warning mb-2">
+                            {% for i in "12345"|make_list %}
+                                <i class="fa-solid fa-star {% if forloop.counter <= rev.rating %}text-warning{% else %}text-muted opacity-25{% endif %}"></i>
+                            {% endfor %}
+                        </div>
+                        <p class="text-muted small flex-grow-1 fst-italic mb-3">
+                            "{{ rev.comment|default:'บริการดีมาก ช่างตรงเวลาและเก็บงานสะอาดเรียบร้อย' }}"
+                        </p>
+                        <div class="border-top pt-2 mt-auto">
+                            <div class="fw-bold text-dark small">{{ rev.customer.full_name }}</div>
+                            <small class="text-muted">รีวิวช่าง: <a href="{% url 'workers:detail' rev.worker.id %}" class="text-decoration-none">{{ rev.worker.user.full_name }}</a></small>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- CTA Worker Section -->
+<section class="py-5" style="background: linear-gradient(135deg, #eff6ff, #dbeafe);">
+    <div class="container text-center py-3">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <h2 class="fw-bold mb-3 text-dark">คุณเป็นช่างฝีมือใช่หรือไม่?</h2>
+                <p class="text-muted mb-4 lead">
+                    เข้าร่วมเป็นพาร์ทเนอร์กับเรา เพื่อเพิ่มโอกาสในการรับงานจากลูกค้าในพื้นที่ของคุณ สมัครฟรี ไม่มีค่าใช้จ่ายแอบแฝง
+                </p>
+                <div class="d-flex justify-content-center gap-3">
+                    <a href="{% url 'accounts:register' %}?role=WORKER" class="btn btn-primary-custom rounded-pill px-4 py-2 fs-5">
+                        <i class="fa-solid fa-user-gear me-2"></i> สมัครเป็นช่างกับเราตอนนี้
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends 'dashboard/admin/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-1">จัดการหมวดหมู่งานและบริการ</h3>
+        <p class="text-muted small mb-0">เพิ่ม แก้ไข หรือเปิด/ปิดการใช้งานหมวดหมู่ช่างในระบบ</p>
+    </div>
+    <button type="button" class="btn btn-primary-custom rounded-pill btn-sm px-3" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+        <i class="fa-solid fa-plus me-1"></i> เพิ่มหมวดหมู่ใหม่
+    </button>
+</div>
+
+<div class="card-custom p-4 bg-white">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ไอคอน</th>
+                    <th>ชื่อหมวดหมู่</th>
+                    <th>คำอธิบาย</th>
+                    <th>จำนวนช่าง</th>
+                    <th>สถานะ</th>
+                    <th class="text-end">การจัดการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cat in categories %}
+                    <tr>
+                        <td>
+                            <div class="bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; font-size: 1.1rem;">
+                                <i class="fa-solid {{ cat.icon|default:'fa-wrench' }}"></i>
+                            </div>
+                        </td>
+                        <td><strong class="text-dark">{{ cat.category_name }}</strong></td>
+                        <td class="small text-muted">{{ cat.description|default:"-" }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ cat.worker_count }} ช่าง</span></td>
+                        <td>
+                            {% if cat.is_active %}
+                                <span class="badge bg-success">เปิดใช้งาน</span>
+                            {% else %}
+                                <span class="badge bg-secondary">ปิดใช้งาน</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <form method="POST" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="category_id" value="{{ cat.id }}">
+                                <input type="hidden" name="action" value="TOGGLE">
+                                <button type="submit" class="btn btn-sm {% if cat.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %} rounded-pill px-3">
+                                    {% if cat.is_active %}ปิดใช้งาน{% else %}เปิดใช้งาน{% endif %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Add Category -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">เพิ่มหมวดหมู่บริการใหม่</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="ADD">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">ชื่อหมวดหมู่</label>
+                        <input type="text" name="category_name" class="form-control" placeholder="เช่น งานซ่อมเครื่องทำน้ำอุ่น" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">ไอคอน (FontAwesome Class)</label>
+                        <input type="text" name="icon" class="form-control" placeholder="เช่น fa-bolt, fa-wrench" value="fa-wrench">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">คำอธิบายหมวดหมู่</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="ระบุขอบเขตงานหรือบริการในหมวดหมู่นี้..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary-custom rounded-pill px-4">บันทึกหมวดหมู่</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

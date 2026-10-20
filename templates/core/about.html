@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}เกี่ยวกับระบบ | ระบบประกาศและค้นหาช่างรับจ้างท้องถิ่น{% endblock %}
+
+{% block content %}
+<div class="bg-primary text-white py-5 text-center">
+    <div class="container">
+        <h1 class="display-6 fw-bold mb-2">เกี่ยวกับระบบ ช่างใกล้บ้าน</h1>
+        <p class="lead opacity-90 mb-0">แพลตฟอร์มตัวกลางเชื่อมโยงช่างฝีมือท้องถิ่นกับผู้ว่าจ้างที่เชื่อถือได้</p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row g-5 align-items-center">
+        <div class="col-lg-6">
+            <h6 class="text-primary fw-bold text-uppercase">วิสัยทัศน์ของเรา</h6>
+            <h2 class="fw-bold mb-3">ยกระดับมาตรฐานงานช่าง และสร้างรายได้ที่มั่นคงให้กับช่างชุมชน</h2>
+            <p class="text-muted">
+                ระบบประกาศและค้นหาช่างรับจ้างท้องถิ่น ถูกพัฒนาขึ้นเพื่อแก้ปัญหาความยากลำบากในการหาช่างฝีมือดีที่น่าเชื่อถือในบริเวณใกล้เคียง พร้อมทั้งสร้างช่องทางให้ช่างท้องถิ่นสามารถเข้าถึงงานได้อย่างต่อเนื่อง
+            </p>
+            <div class="d-flex flex-column gap-3 mt-4">
+                <div class="d-flex gap-3">
+                    <div class="text-primary fs-4"><i class="fa-solid fa-circle-check"></i></div>
+                    <div>
+                        <h6 class="fw-bold mb-1">ตรวจสอบช่างก่อนเปิดรับงาน</h6>
+                        <small class="text-muted">แอดมินตรวจสอบข้อมูลและยืนยันตัวตนของช่างก่อนเผยแพร่ในระบบ</small>
+                    </div>
+                </div>
+                <div class="d-flex gap-3">
+                    <div class="text-primary fs-4"><i class="fa-solid fa-star"></i></div>
+                    <div>
+                        <h6 class="fw-bold mb-1">ระบบรีวิวจากลูกค้าตัวจริง</h6>
+                        <small class="text-muted">โปร่งใส ตรวจสอบคะแนนดาวและความพึงพอใจจากงานที่เสร็จสิ้นจริง</small>
+                    </div>
+                </div>
+                <div class="d-flex gap-3">
+                    <div class="text-primary fs-4"><i class="fa-solid fa-map-location-dot"></i></div>
+                    <div>
+                        <h6 class="fw-bold mb-1">ค้นหาได้ตรงพื้นที่ 77 จังหวัด</h6>
+                        <small class="text-muted">เลือกจังหวัดและพื้นที่บริการที่สะดวกเพื่อความรวดเร็วในการเดินทาง</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card-custom p-4 bg-light border-0 shadow">
+                <h5 class="fw-bold mb-3">ข้อมูลผู้พัฒนาระบบ</h5>
+                <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
+                    <li class="d-flex align-items-center gap-3">
+                        <div class="bg-primary text-white p-3 rounded-3"><i class="fa-solid fa-user-gear fs-4"></i></div>
+                        <div>
+                            <div class="fw-bold">นายภูพิรัฐ แซ่โค้ว</div>
+                            <small class="text-muted">รหัสนักศึกษา: 6812732119 (ผู้พัฒนาระบบ Full Stack & Django Backend)</small>
+                        </div>
+                    </li>
+                    <li class="d-flex align-items-center gap-3">
+                        <div class="bg-warning text-dark p-3 rounded-3"><i class="fa-solid fa-clipboard-list fs-4"></i></div>
+                        <div>
+                            <div class="fw-bold">นายมนต์พระกาญจน์ คำเหลือ</div>
+                            <small class="text-muted">รหัสนักศึกษา: 6812732120 (Requirement & System Analyst)</small>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

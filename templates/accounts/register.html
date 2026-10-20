@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}สมัครสมาชิก | ช่างใกล้บ้าน{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card-custom p-4 p-md-5 shadow-lg border-0 rounded-4">
+                <div class="text-center mb-4">
+                    <div class="brand-icon mx-auto mb-3" style="width: 48px; height: 48px; font-size: 1.3rem;">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </div>
+                    <h3 class="fw-bold text-dark">สร้างบัญชีผู้ใช้ใหม่</h3>
+                    <p class="text-muted small">เลือกประเภทการใช้งานและกรอกข้อมูลเพื่อเริ่มต้น</p>
+                </div>
+
+                <form method="POST" action="{% url 'accounts:register' %}">
+                    {% csrf_token %}
+
+                    <!-- Role Selection Radio -->
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-dark d-block">เลือกประเภทบัญชีของคุณ:</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="card-custom p-3 text-center d-block cursor-pointer role-card h-100" id="customerRoleCard">
+                                    <input type="radio" name="role" value="CUSTOMER" class="form-check-input me-1" {% if initial_role == 'CUSTOMER' %}checked{% endif %}>
+                                    <div class="fw-bold mt-1 text-primary"><i class="fa-solid fa-user me-1"></i> ลูกค้าทั่วไป</div>
+                                    <small class="text-muted" style="font-size: 0.75rem;">ค้นหาและจ้างงานช่าง</small>
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <label class="card-custom p-3 text-center d-block cursor-pointer role-card h-100" id="workerRoleCard">
+                                    <input type="radio" name="role" value="WORKER" class="form-check-input me-1" {% if initial_role == 'WORKER' %}checked{% endif %}>
+                                    <div class="fw-bold mt-1 text-warning"><i class="fa-solid fa-wrench me-1"></i> ช่างรับจ้าง</div>
+                                    <small class="text-muted" style="font-size: 0.75rem;">รับงานและลงทะเบียนบริการ</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">ชื่อจริง</label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.first_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">นามสกุล</label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.last_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">อีเมล</label>
+                        {{ form.email }}
+                        {% if form.email.errors %}
+                            <div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">เบอร์โทรศัพท์</label>
+                        {{ form.phone_number }}
+                        {% if form.phone_number.errors %}
+                            <div class="text-danger small mt-1">{{ form.phone_number.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">รหัสผ่าน</label>
+                            {{ form.password }}
+                            {% if form.password.errors %}
+                                <div class="text-danger small mt-1">{{ form.password.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">ยืนยันรหัสผ่าน</label>
+                            {{ form.confirm_password }}
+                            {% if form.confirm_password.errors %}
+                                <div class="text-danger small mt-1">{{ form.confirm_password.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary-custom w-100 rounded-pill py-2 fw-semibold">
+                        <i class="fa-solid fa-user-check me-1"></i> ยืนยันการสมัครสมาชิก
+                    </button>
+                </form>
+
+                <div class="text-center mt-4 small text-muted">
+                    มีบัญชีอยู่แล้ว? <a href="{% url 'accounts:login' %}" class="fw-semibold text-primary text-decoration-none">เข้าสู่ระบบ</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends 'dashboard/admin/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h3 class="fw-bold mb-1">รายชื่อผู้ใช้งานทั้งหมด</h3>
+        <p class="text-muted small mb-0">ดู ค้นหา และจัดการบัญชีสมาชิกทุกบทบาทในระบบ (Admin, Customer, Worker)</p>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <!-- Search Form -->
+        <form method="GET" action="" class="d-flex align-items-center">
+            {% if role_filter != 'ALL' %}
+                <input type="hidden" name="role" value="{{ role_filter }}">
+            {% endif %}
+            <div class="input-group input-group-sm">
+                <input type="text" name="q" value="{{ search_q }}" class="form-control rounded-start-pill px-3" placeholder="ค้นหาชื่อ, อีเมล, เบอร์โทร..." style="min-width: 220px;">
+                <button type="submit" class="btn btn-primary rounded-end-pill px-3">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+                {% if search_q %}
+                    <a href="?role={{ role_filter }}" class="btn btn-outline-secondary rounded-pill ms-1" title="ล้างการค้นหา">
+                        <i class="fa-solid fa-xmark"></i>
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+
+        <!-- Role Filter Buttons -->
+        <div class="btn-group rounded-pill overflow-hidden border">
+            <a href="?role=ALL{% if search_q %}&q={{ search_q }}{% endif %}" class="btn btn-sm {% if role_filter == 'ALL' %}btn-primary{% else %}btn-light{% endif %}">ทั้งหมด</a>
+            <a href="?role=ADMIN{% if search_q %}&q={{ search_q }}{% endif %}" class="btn btn-sm {% if role_filter == 'ADMIN' %}btn-danger{% else %}btn-light{% endif %}">แอดมิน</a>
+            <a href="?role=WORKER{% if search_q %}&q={{ search_q }}{% endif %}" class="btn btn-sm {% if role_filter == 'WORKER' %}btn-warning text-dark{% else %}btn-light{% endif %}">ช่าง</a>
+            <a href="?role=CUSTOMER{% if search_q %}&q={{ search_q }}{% endif %}" class="btn btn-sm {% if role_filter == 'CUSTOMER' %}btn-info text-white{% else %}btn-light{% endif %}">ลูกค้า</a>
+        </div>
+    </div>
+</div>
+
+<div class="card-custom p-4 bg-white shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 80px;">รหัสผู้ใช้</th>
+                    <th>ผู้ใช้งาน</th>
+                    <th>อีเมล</th>
+                    <th>เบอร์โทรศัพท์</th>
+                    <th>บทบาท</th>
+                    <th>วันที่สมัคร</th>
+                    <th class="text-center" style="width: 140px;">จัดการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                    <tr>
+                        <td><strong>#{{ u.id }}</strong></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <img src="{{ u.avatar_url }}" alt="{{ u.full_name }}" class="rounded-circle shadow-sm border" style="width: 38px; height: 38px; object-fit: cover;">
+                                <div>
+                                    <div class="fw-bold text-dark">{{ u.full_name }}</div>
+                                    <small class="text-muted">@{{ u.username }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <a href="mailto:{{ u.email }}" class="text-decoration-none text-body small">
+                                {{ u.email }}
+                            </a>
+                        </td>
+                        <td>{{ u.phone_number|default:"-" }}</td>
+                        <td>
+                            {% if u.role == 'ADMIN' %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="fa-solid fa-shield-halved me-1"></i>แอดมิน</span>
+                            {% elif u.role == 'WORKER' %}
+                                <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2 py-1"><i class="fa-solid fa-helmet-safety me-1"></i>ช่างรับจ้าง</span>
+                            {% else %}
+                                <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="fa-solid fa-user me-1"></i>ลูกค้าทั่วไป</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted">{{ u.created_at|date:"d M Y" }}</td>
+                        <td class="text-center">
+                            {% if u.id == request.user.id %}
+                                <span class="badge bg-light text-muted border px-2 py-1 small" title="ไม่สามารถลบบัญชีตนเองได้">
+                                    <i class="fa-solid fa-user-lock me-1"></i> บัญชีนี้
+                                </span>
+                            {% else %}
+                                <form method="POST" action="{% url 'dashboard:admin_delete_user' u.id %}" class="d-inline" onsubmit="return confirm('⚠️ ยืนยันการลบบัญชีผู้ใช้:\nชื่อ: {{ u.full_name }}\nอีเมล: {{ u.email }}\nบทบาท: {{ u.get_role_display }}\n\nการกระทำนี้จะลบข้อมูลที่เกี่ยวข้องทั้งหมดอย่างถาวร ยืนยันหรือไม่?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1" style="font-size: 0.8rem;">
+                                        <i class="fa-solid fa-trash-can me-1"></i> ลบบัญชี
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            <i class="fa-solid fa-user-slash fs-3 d-block mb-2 text-secondary"></i>
+                            ไม่พบข้อมูลผู้ใช้งาน{% if search_q %} ที่ตรงกับ "{{ search_q }}"{% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

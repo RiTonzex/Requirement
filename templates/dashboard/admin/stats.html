@@ -1,0 +1,147 @@
+{% extends 'dashboard/admin/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-1">สถิติและรายงานเชิงลึก (Analytics)</h3>
+        <p class="text-muted small mb-0">วิเคราะห์คำค้นหายอดนิยม จังหวัดที่มีความต้องการสูง และสถานะการให้บริการ</p>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Chart: Category Request Distribution -->
+    <div class="col-lg-6">
+        <div class="card-custom p-4 bg-white h-100">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-chart-pie me-2 text-primary"></i> จำนวนคำขอจ้างงานแยกตามหมวดหมู่</h5>
+            <canvas id="categoryChart" style="max-height: 280px;"></canvas>
+        </div>
+    </div>
+
+    <!-- Chart: Job Status Distribution -->
+    <div class="col-lg-6">
+        <div class="card-custom p-4 bg-white h-100">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-chart-donut me-2 text-success"></i> สัดส่วนสถานะการจ้างงาน</h5>
+            <canvas id="statusChart" style="max-height: 280px;"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Top Search Keywords -->
+    <div class="col-lg-6">
+        <div class="card-custom p-4 bg-white h-100">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-magnifying-glass me-2 text-info"></i> คำค้นหายอดนิยม (Top 10 Keywords)</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>อันดับ</th>
+                            <th>คำค้นหา</th>
+                            <th class="text-end">จำนวนครั้งที่ค้นหา</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in top_keywords %}
+                            <tr>
+                                <td><span class="badge bg-light text-dark border">#{{ forloop.counter }}</span></td>
+                                <td class="fw-bold text-dark">{{ item.keyword }}</td>
+                                <td class="text-end fw-semibold text-primary">{{ item.count }} ครั้ง</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-3 text-muted">ยังไม่มีบันทึกการค้นหา</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Provinces -->
+    <div class="col-lg-6">
+        <div class="card-custom p-4 bg-white h-100">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-map-location-dot me-2 text-danger"></i> จังหวัดที่มีการค้นหามากที่สุด</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>อันดับ</th>
+                            <th>จังหวัด</th>
+                            <th class="text-end">จำนวนครั้ง</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in top_provinces %}
+                            <tr>
+                                <td><span class="badge bg-light text-dark border">#{{ forloop.counter }}</span></td>
+                                <td class="fw-bold text-dark">{{ item.province__province_name }}</td>
+                                <td class="text-end fw-semibold text-danger">{{ item.count }} ครั้ง</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-3 text-muted">ยังไม่มีบันทึกการค้นหา</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Category Chart
+    const catLabels = [{% for c in category_requests %}'{{ c.category_name }}',{% endfor %}];
+    const catData = [{% for c in category_requests %}{{ c.req_count }},{% endfor %}];
+    
+    if (catLabels.length > 0) {
+        new Chart(document.getElementById('categoryChart'), {
+            type: 'bar',
+            data: {
+                labels: catLabels,
+                datasets: [{
+                    label: 'จำนวนคำขอรับบริการ (ครั้ง)',
+                    data: catData,
+                    backgroundColor: 'rgba(37, 99, 235, 0.7)',
+                    borderColor: '#2563eb',
+                    borderWidth: 1,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    }
+
+    // 2. Status Chart
+    const statusLabels = [{% for s in request_statuses %}'{{ s.status }}',{% endfor %}];
+    const statusData = [{% for s in request_statuses %}{{ s.count }},{% endfor %}];
+
+    if (statusLabels.length > 0) {
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: statusLabels,
+                datasets: [{
+                    data: statusData,
+                    backgroundColor: ['#f59e0b', '#06b6d4', '#10b981', '#ef4444']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

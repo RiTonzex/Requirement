@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}แชทสนทนา: งาน #{{ booking.id }} | ช่างใกล้บ้าน{% endblock %}
+
+{% block extra_css %}
+<style>
+.chat-container {
+    height: 520px;
+    overflow-y: auto;
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 20px;
+}
+.chat-bubble-me {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    border-radius: 16px 16px 2px 16px;
+    padding: 10px 16px;
+    max-width: 75%;
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+}
+.chat-bubble-other {
+    background: white;
+    color: #1e293b;
+    border-radius: 16px 16px 16px 2px;
+    padding: 10px 16px;
+    max-width: 75%;
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            
+            <!-- Chat Header Card -->
+            <div class="card-custom p-3 mb-3 shadow-sm border-0 rounded-4 d-flex flex-row justify-content-between align-items-center bg-white">
+                <div class="d-flex align-items-center gap-3">
+                    <a href="{% url 'bookings:detail' booking.id %}" class="btn btn-light btn-sm rounded-circle p-2" title="กลับไปหน้ารายละเอียด">
+                        <i class="fa-solid fa-arrow-left text-dark"></i>
+                    </a>
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5" style="width: 44px; height: 44px;">
+                        {{ other_user.first_name|default:other_user.username|slice:":1"|upper }}
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">{{ other_user.full_name }}</h6>
+                        <small class="text-muted">
+                            <span class="badge bg-light text-secondary border me-1">งาน #{{ booking.id }}</span>
+                            {{ booking.all_categories_display }}
+                        </small>
+                    </div>
+                </div>
+
+                <div>
+                    <a href="{% url 'bookings:detail' booking.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                        <i class="fa-solid fa-file-lines me-1"></i> ดูใบงาน
+                    </a>
+                </div>
+            </div>
+
+            <!-- Chat Messages Window -->
+            <div class="card-custom p-0 border-0 rounded-4 shadow-sm overflow-hidden bg-white mb-3">
+                <div class="chat-container d-flex flex-column gap-3" id="chatMessagesBox">
+                    
+                    <!-- Welcome / Job Info Banner in Chat -->
+                    <div class="text-center my-2">
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-3 py-1 small">
+                            <i class="fa-solid fa-shield-halved me-1 text-primary"></i> เริ่มต้นการสนทนาสำหรับคำขอรับบริการ #{{ booking.id }}
+                        </span>
+                    </div>
+
+                    {% for msg in messages_list %}
+                        {% if msg.sender_id == user.id %}
+                            <!-- Message from Current User (Right) -->
+                            <div class="d-flex flex-column align-items-end">
+                                <div class="chat-bubble-me">
+                                    {% if msg.image_url %}
+                                        <div class="mb-2">
+                                            <a href="{{ msg.image_url }}" target="_blank">
+                                                <img src="{{ msg.image_url }}" class="rounded-3 shadow-sm w-100" style="max-height: 200px; object-fit: cover;" alt="Attached Image">
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                    {% if msg.message %}
+                                        <p class="mb-0">{{ msg.message }}</p>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted mt-1 me-1" style="font-size: 0.7rem;">{{ msg.timestamp }}</small>
+                            </div>
+                        {% else %}
+                            <!-- Message from Other Party (Left) -->
+                            <div class="d-flex flex-column align-items-start">
+                                <div class="small fw-semibold text-muted mb-1 ms-1" style="font-size: 0.75rem;">{{ msg.sender_name }}</div>
+                                <div class="chat-bubble-other">
+                                    {% if msg.image_url %}
+                                        <div class="mb-2">
+                                            <a href="{{ msg.image_url }}" target="_blank">
+                                                <img src="{{ msg.image_url }}" class="rounded-3 shadow-sm w-100" style="max-height: 200px; object-fit: cover;" alt="Attached Image">
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                    {% if msg.message %}
+                                        <p class="mb-0">{{ msg.message }}</p>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted mt-1 ms-1" style="font-size: 0.7rem;">{{ msg.timestamp }}</small>
+                            </div>
+                        {% endif %}
+                    {% empty %}
+                        <div class="text-center py-5 text-muted my-auto" id="noMessagesPlaceholder">
+                            <i class="fa-regular fa-comment-dots fs-1 mb-3 text-secondary opacity-50"></i>
+                            <h6>ยังไม่มีข้อความสนทนา</h6>
+                            <p class="small text-muted mb-0">พิมพ์ข้อความเพื่อสอบถามรายละเอียด นัดหมาย หรือประเมินราคากับคู่สนทนาได้เลยครับ</p>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Chat Input Toolbar -->
+                <div class="p-3 border-top bg-white">
+                    <form id="chatForm" class="d-flex gap-2 align-items-center" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- Attach Image Button -->
+                        <label class="btn btn-light rounded-circle p-2 text-secondary mb-0 shadow-sm" style="width: 42px; height: 42px;" title="แนบรูปภาพ">
+                            <i class="fa-solid fa-camera"></i>
+                            <input type="file" name="image" id="chatImageInput" accept="image/*" style="display: none;">
+                        </label>
+
+                        <!-- Text Input -->
+                        <input type="text" name="message" id="chatMessageInput" class="form-control rounded-pill px-4" placeholder="พิมพ์ข้อความที่นี่..." autocomplete="off">
+
+                        <!-- Send Button -->
+                        <button type="submit" class="btn btn-primary-custom rounded-pill px-4 shadow-sm" id="btnSendChat">
+                            <i class="fa-solid fa-paper-plane me-1"></i> ส่ง
+                        </button>
+                    </form>
+                    <div id="imagePreviewContainer" class="mt-2 small text-muted d-none align-items-center gap-2">
+                        <i class="fa-solid fa-image text-primary"></i>
+                        <span id="imagePreviewName"></span>
+                        <button type="button" class="btn-close" style="font-size: 0.6rem;" onclick="clearImageAttachment()"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatBox = document.getElementById('chatMessagesBox');
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    const chatForm = document.getElementById('chatForm');
+    const msgInput = document.getElementById('chatMessageInput');
+    const imgInput = document.getElementById('chatImageInput');
+    const imgPreviewContainer = document.getElementById('imagePreviewContainer');
+    const imgPreviewName = document.getElementById('imagePreviewName');
+    const noMsgPlaceholder = document.getElementById('noMessagesPlaceholder');
+
+    imgInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            imgPreviewName.textContent = this.files[0].name;
+            imgPreviewContainer.classList.remove('d-none');
+            imgPreviewContainer.classList.add('d-flex');
+        }
+    });
+
+    window.clearImageAttachment = function() {
+        imgInput.value = '';
+        imgPreviewContainer.classList.add('d-none');
+        imgPreviewContainer.classList.remove('d-flex');
+    };
+
+    chatForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const text = msgInput.value.trim();
+        const hasFile = imgInput.files && imgInput.files.length > 0;
+
+        if (!text && !hasFile) return;
+
+        const formData = new FormData(chatForm);
+
+        fetch("{% url 'bookings:send_chat_message' booking.id %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const msg = data.message;
+                if (noMsgPlaceholder) noMsgPlaceholder.remove();
+
+                const bubbleHtml = `
+                    <div class="d-flex flex-column align-items-end">
+                        <div class="chat-bubble-me">
+                            ${msg.image_url ? `<div class="mb-2"><a href="${msg.image_url}" target="_blank"><img src="${msg.image_url}" class="rounded-3 shadow-sm w-100" style="max-height: 200px; object-fit: cover;"></a></div>` : ''}
+                            ${msg.message ? `<p class="mb-0">${msg.message}</p>` : ''}
+                        </div>
+                        <small class="text-muted mt-1 me-1" style="font-size: 0.7rem;">${msg.timestamp}</small>
+                    </div>
+                `;
+                chatBox.insertAdjacentHTML('beforeend', bubbleHtml);
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                msgInput.value = '';
+                clearImageAttachment();
+            } else {
+                alert('เกิดข้อผิดพลาดในการส่งข้อความ: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error('Chat send error:', err);
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}ตั้งค่าโปรไฟล์ส่วนตัว | ช่างใกล้บ้าน{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <div class="card-custom p-4 p-md-5 shadow border-0 rounded-4">
+                <h4 class="fw-bold mb-1"><i class="fa-solid fa-user-gear me-2 text-primary"></i> ตั้งค่าข้อมูลส่วนตัว</h4>
+                <p class="text-muted small mb-4">อัปเดตข้อมูลการติดต่อและชื่อของคุณ</p>
+
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <!-- Avatar Preview & Upload -->
+                    <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-4 mb-4 border">
+                        <img id="avatar-preview" src="{{ user.avatar_url }}" alt="{{ user.full_name }}" class="rounded-circle shadow-sm border" style="width: 72px; height: 72px; object-fit: cover;">
+                        <div class="flex-grow-1">
+                            <label class="form-label small fw-bold text-dark mb-1">
+                                <i class="fa-solid fa-camera text-primary me-1"></i> รูปโปรไฟล์ / อวาตาร์
+                            </label>
+                            {{ form.avatar }}
+                            <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">รองรับ JPG, PNG, WEBP (ซิงค์ Cloudinary อัตโนมัติ)</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">อีเมล (ไม่สามารถแก้ไขได้)</label>
+                        <input type="text" class="form-control bg-light" value="{{ user.email }}" disabled>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">ชื่อจริง</label>
+                            {{ form.first_name }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">นามสกุล</label>
+                            {{ form.last_name }}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">เบอร์โทรศัพท์</label>
+                        {{ form.phone_number }}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary-custom rounded-pill px-4">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> บันทึกข้อมูล
+                        </button>
+                        <a href="{% url 'accounts:dashboard_redirect' %}" class="btn btn-outline-secondary rounded-pill px-3">
+                            ย้อนกลับ
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const avatarInput = document.querySelector('input[name="avatar"]');
+    const avatarPreview = document.getElementById('avatar-preview');
+    if (avatarInput && avatarPreview) {
+        avatarInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    avatarPreview.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+});
+</script>
+
+{% endblock %}

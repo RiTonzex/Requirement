@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}แก้ไขโปรไฟล์ช่าง | ช่างใกล้บ้าน{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="card-custom p-4 p-md-5 shadow-lg border-0 rounded-4">
+                <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                    <div>
+                        <h4 class="fw-bold mb-1"><i class="fa-solid fa-user-pen me-2 text-primary"></i> แก้ไขข้อมูลโปรไฟล์ช่าง</h4>
+                        <p class="text-muted small mb-0">กำหนดทักษะงาน ค่าบริการเริ่มต้น เวลาทำการ และเอกสารยืนยันตัวตน</p>
+                    </div>
+                    <a href="{% url 'dashboard:worker_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                        กลับสู่แดชบอร์ด
+                    </a>
+                </div>
+
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <!-- 1. Basic Info -->
+                    <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user me-2 text-primary"></i> 1. ข้อมูลทั่วไปและรูปถ่าย</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">ชื่อจริง</label>
+                            <input type="text" name="first_name" class="form-control" value="{{ user.first_name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">นามสกุล</label>
+                            <input type="text" name="last_name" class="form-control" value="{{ user.last_name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">เบอร์โทรศัพท์ติดต่อ</label>
+                            <input type="text" name="phone_number" class="form-control" value="{{ user.phone_number }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">วันและเวลาทำการ</label>
+                            <input type="text" name="working_hours" class="form-control" value="{{ worker.working_hours|default:'จันทร์ - เสาร์ (08:30 - 18:00 น.)' }}" placeholder="เช่น จันทร์ - เสาร์ (08:30 - 18:00 น.)">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">รูปโปรไฟล์ช่าง</label>
+                            <div class="d-flex align-items-center gap-3 mb-2 p-2 bg-light rounded-3 border">
+                                <img id="profile-preview" src="{{ worker.display_profile_image_url }}" class="rounded-circle shadow-sm border" style="width: 60px; height: 60px; object-fit: cover;" alt="Profile">
+                                <div class="flex-grow-1">
+                                    <input type="file" name="profile_image" id="id_profile_image" class="form-control form-control-sm" accept="image/*">
+                                    <div class="d-flex justify-content-between align-items-center mt-1">
+                                        <small class="text-muted" style="font-size: 0.75rem;">อัปโหลดขึ้น Cloudinary อัตโนมัติ (ป้องกันรูปซ้ำ)</small>
+                                        {% if worker.profile_image %}
+                                            <div class="form-check form-check-inline mb-0">
+                                                <input class="form-check-input" type="checkbox" name="delete_profile_image" value="1" id="del_profile_img">
+                                                <label class="form-check-label text-danger small" for="del_profile_img">ลบรูปโปรไฟล์</label>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">ประวัติ / รายละเอียดความเชี่ยวชาญ & ประสบการณ์</label>
+                            <textarea name="bio" class="form-control" rows="4" placeholder="แนะนำตัว ประสบการณ์การทำงาน จุดเด่นของบริการ...">{{ worker.bio }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- 2. KYC Verification Documents -->
+                    <div class="p-3 bg-light rounded-4 mb-4 border">
+                        <h5 class="fw-bold text-dark mb-1"><i class="fa-solid fa-shield-halved me-2 text-primary"></i> 2. เอกสารยืนยันตัวตน (สำหรับขอตรา Verified Badge)</h5>
+                        <p class="text-muted small mb-3">เอกสารจะถูกส่งให้ผู้ดูแลระบบตรวจสอบเท่านั้น จะไม่แสดงต่อสาธารณะ</p>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">รูปบัตรประชาชน (KYC)</label>
+                                {% if worker.id_card_image %}
+                                    <div class="mb-2 d-flex align-items-center justify-content-between bg-white p-2 rounded border">
+                                        <a href="{{ worker.display_id_card_url }}" target="_blank" class="badge bg-success-subtle text-success border text-decoration-none">
+                                            <i class="fa-solid fa-id-card me-1"></i> ดูรูปบัตรปัจจุบัน
+                                        </a>
+                                        <div class="form-check mb-0">
+                                            <input class="form-check-input" type="checkbox" name="delete_id_card_image" value="1" id="del_id_card">
+                                            <label class="form-check-label text-danger small" for="del_id_card">ลบ</label>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                <input type="file" name="id_card_image" class="form-control" accept="image/*">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">ใบประกอบวิชาชีพ / ใบประกาศนียบัตร (ถ้ามี)</label>
+                                {% if worker.certificate_image %}
+                                    <div class="mb-2 d-flex align-items-center justify-content-between bg-white p-2 rounded border">
+                                        <a href="{{ worker.display_certificate_url }}" target="_blank" class="badge bg-success-subtle text-success border text-decoration-none">
+                                            <i class="fa-solid fa-certificate me-1"></i> ดูรูปใบประกอบฯ ปัจจุบัน
+                                        </a>
+                                        <div class="form-check mb-0">
+                                            <input class="form-check-input" type="checkbox" name="delete_certificate_image" value="1" id="del_cert">
+                                            <label class="form-check-label text-danger small" for="del_cert">ลบ</label>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                <input type="file" name="certificate_image" class="form-control" accept="image/*">
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- 3. Services & Starting Prices with Units -->
+                    <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-wrench me-2 text-primary"></i> 3. หมวดหมู่งานที่รับบริการ และราคาเริ่มต้น</h5>
+                    <div class="row g-3 mb-4">
+                        {% for cat in all_categories %}
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 bg-light h-100">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="categories" value="{{ cat.id }}" id="cat_{{ cat.id }}" {% if cat.id in current_services %}checked{% endif %}>
+                                        <label class="form-check-label fw-bold small text-dark" for="cat_{{ cat.id }}">
+                                            <i class="fa-solid {{ cat.icon|default:'fa-wrench' }} me-1 text-primary"></i> {{ cat.category_name }}
+                                        </label>
+                                    </div>
+                                    <div class="row g-1">
+                                        <div class="col-7">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">฿</span>
+                                                <input type="number" name="price_{{ cat.id }}" class="form-control" placeholder="ราคาเริ่มต้น" 
+                                                       value="{% for cid, data in current_services.items %}{% if cid == cat.id %}{{ data.price|floatformat:0 }}{% endif %}{% endfor %}">
+                                            </div>
+                                        </div>
+                                        <div class="col-5">
+                                            <select name="unit_{{ cat.id }}" class="form-select form-select-sm">
+                                                <option value="/งาน" {% for cid, data in current_services.items %}{% if cid == cat.id and data.unit == '/งาน' %}selected{% endif %}{% endfor %}>/ งาน</option>
+                                                <option value="/เครื่อง" {% for cid, data in current_services.items %}{% if cid == cat.id and data.unit == '/เครื่อง' %}selected{% endif %}{% endfor %}>/ เครื่อง</option>
+                                                <option value="/จุด" {% for cid, data in current_services.items %}{% if cid == cat.id and data.unit == '/จุด' %}selected{% endif %}{% endfor %}>/ จุด</option>
+                                                <option value="/ตร.ม." {% for cid, data in current_services.items %}{% if cid == cat.id and data.unit == '/ตร.ม.' %}selected{% endif %}{% endfor %}>/ ตร.ม.</option>
+                                                <option value="/ชั่วโมง" {% for cid, data in current_services.items %}{% if cid == cat.id and data.unit == '/ชั่วโมง' %}selected{% endif %}{% endfor %}>/ ชั่วโมง</option>
+                                                <option value="/วัน" {% for cid, data in current_services.items %}{% if cid == cat.id and data.unit == '/วัน' %}selected{% endif %}{% endfor %}>/ วัน</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- 4. Service Areas -->
+                    <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-map-location-dot me-2 text-primary"></i> 4. จังหวัดที่สะดวกให้บริการ (เลือกได้หลายจังหวัด)</h5>
+                    <div class="row row-cols-2 row-cols-md-4 g-2 mb-4" style="max-height: 280px; overflow-y: auto; border: 1px solid #e2e8f0; padding: 12px; border-radius: 12px; background: #fafafa;">
+                        {% for prov in all_provinces %}
+                            <div class="col">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="provinces" value="{{ prov.id }}" id="prov_{{ prov.id }}" {% if prov.id in current_provinces %}checked{% endif %}>
+                                    <label class="form-check-label small" for="prov_{{ prov.id }}">
+                                        {{ prov.province_name }}
+                                    </label>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary-custom rounded-pill px-5 py-2 fw-semibold">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> บันทึกข้อมูลโปรไฟล์ช่าง
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const profileImgInput = document.getElementById('id_profile_image');
+    const profilePreview = document.getElementById('profile-preview');
+    if (profileImgInput && profilePreview) {
+        profileImgInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    profilePreview.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+

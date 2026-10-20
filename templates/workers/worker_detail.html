@@ -1,0 +1,545 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ worker.user.full_name }} | โปรไฟล์ช่างรับจ้างท้องถิ่น{% endblock %}
+
+{% block content %}
+<!-- Worker Header Hero Banner -->
+<div class="bg-white border-bottom py-4 py-md-5">
+    <div class="container">
+        <div class="row align-items-center g-4">
+            <div class="col-auto">
+                <img src="{{ worker.display_profile_image_url }}" alt="{{ worker.user.full_name }}" class="worker-avatar shadow-sm border border-2" style="width: 110px; height: 110px; object-fit: cover; border-radius: 50%;">
+
+            </div>
+
+            <div class="col">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <h2 class="fw-bold mb-0 text-dark">{{ worker.user.full_name }}</h2>
+                    
+                    {% if worker.is_id_verified %}
+                        <span class="badge bg-info-subtle text-info border border-info border-opacity-25 rounded-pill px-3 py-1 fw-bold">
+                            <i class="fa-solid fa-certificate me-1"></i> ช่างยืนยันตัวตนแล้ว (Verified)
+                        </span>
+                    {% endif %}
+
+                    {% if worker.is_available %}
+                        <span class="badge-available"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> พร้อมรับงาน</span>
+                    {% else %}
+                        <span class="badge-busy"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> พักการรับงานชั่วคราว</span>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex flex-wrap align-items-center gap-3 text-muted small mb-3">
+                    {% if total_reviews > 0 %}
+                        <span class="star-rating fs-6">
+                            <i class="fa-solid fa-star text-warning"></i>
+                            <strong class="text-dark">{{ worker.average_rating }}</strong>
+                            <span class="text-muted">({{ total_reviews }} รีวิว)</span>
+                        </span>
+                    {% else %}
+                        <span class="badge bg-success-subtle text-success border border-success border-opacity-25 rounded-pill px-3 py-1 fw-semibold">
+                            <i class="fa-solid fa-sparkles me-1"></i> ช่างใหม่ (ยังไม่มีรีวิว)
+                        </span>
+                    {% endif %}
+                    
+                    <span>•</span>
+                    <span class="text-success fw-medium"><i class="fa-solid fa-circle-check"></i> {{ worker.completed_jobs_count }} งานเสร็จสมบูรณ์</span>
+                    <span>•</span>
+                    <span><i class="fa-solid fa-clock text-primary me-1"></i> {{ worker.working_hours|default:"จันทร์ - เสาร์ (08:30 - 18:00 น.)" }}</span>
+                    <span>•</span>
+                    <span><i class="fa-solid fa-phone me-1 text-primary"></i> {{ worker.user.phone_number|default:"ติดต่อผ่านระบบ" }}</span>
+                </div>
+
+                <!-- Action Toolbar -->
+                <div class="d-flex flex-wrap gap-2">
+                    {% if user.is_worker and user == worker.user %}
+                        <a href="{% url 'workers:edit_profile' %}" class="btn btn-warning rounded-pill px-4 fw-semibold text-dark shadow-sm">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> แก้ไขข้อมูลโปรไฟล์ของฉัน
+                        </a>
+                        <a href="{% url 'dashboard:worker_dashboard' %}" class="btn btn-outline-light rounded-pill px-3">
+                            <i class="fa-solid fa-gauge me-1"></i> ไปที่แดชบอร์ดช่าง
+                        </a>
+                    {% elif user.is_worker %}
+                        <span class="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill d-inline-flex align-items-center">
+                            <i class="fa-solid fa-user-gear me-1"></i> โหมดช่างเข้าชม
+                        </span>
+                        <a href="{% url 'dashboard:worker_dashboard' %}" class="btn btn-outline-light rounded-pill px-3">
+                            <i class="fa-solid fa-arrow-left me-1"></i> กลับแดชบอร์ดของฉัน
+                        </a>
+                    {% else %}
+                        <a href="#booking-section" class="btn btn-primary-custom rounded-pill px-4">
+                            <i class="fa-solid fa-calendar-check me-1"></i> จอง / ขอรับบริการ
+                        </a>
+                        {% if user.is_authenticated %}
+                            <button type="button" class="btn btn-outline-danger rounded-pill px-3 btn-ajax-save {% if is_saved %}active{% endif %}" data-worker-id="{{ worker.id }}">
+                                <i class="fa-{% if is_saved %}solid fa-heart text-danger{% else %}regular fa-heart{% endif %} me-1"></i>
+                                <span>{% if is_saved %}บันทึกแล้ว{% else %}บันทึกช่างนี้{% endif %}</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#reportModal">
+                                <i class="fa-solid fa-flag me-1"></i> รายงานปัญหา
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row g-4">
+        <!-- Main Info Left Column -->
+        <div class="col-lg-8">
+            <!-- Bio Section -->
+            <div class="card-custom p-4 mb-4">
+                <h5 class="fw-bold mb-3"><i class="fa-solid fa-id-card-clip me-2 text-primary"></i> ข้อมูลแนะนำตัว & ประสบการณ์</h5>
+                <p class="text-muted mb-0" style="white-space: pre-line;">
+                    {{ worker.bio|default:"ยังไม่มีข้อมูลแนะนำตัวเพิ่มเติม" }}
+                </p>
+            </div>
+
+            <!-- MongoDB Portfolio Showcase Section -->
+            {% if portfolio_items %}
+                <div class="card-custom p-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0"><i class="fa-solid fa-images me-2 text-success"></i> ตัวอย่างผลงานจริง (Portfolio Showcase)</h5>
+                        <span class="badge bg-success-subtle text-success border rounded-pill">{{ portfolio_items|length }} ผลงาน</span>
+                    </div>
+
+                    <div class="row g-3">
+                        {% for p in portfolio_items %}
+                            <div class="col-md-6">
+                                <div class="border rounded-4 overflow-hidden shadow-sm bg-white h-100">
+                                    <div class="row g-0 bg-light">
+                                        {% if p.before_image and p.after_image %}
+                                            <div class="col-6 position-relative border-end">
+                                                <img src="{{ p.before_image }}" class="w-100" style="height: 160px; object-fit: cover;" alt="Before" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80'">
+                                                <span class="badge bg-dark bg-opacity-75 position-absolute top-0 start-0 m-2 small shadow-sm"><i class="fa-solid fa-clock-rotate-left me-1"></i>ก่อนทำ</span>
+                                            </div>
+                                            <div class="col-6 position-relative">
+                                                <img src="{{ p.after_image }}" class="w-100" style="height: 160px; object-fit: cover;" alt="After" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&auto=format&fit=crop&q=80'">
+                                                <span class="badge bg-success bg-opacity-90 position-absolute top-0 end-0 m-2 small shadow-sm"><i class="fa-solid fa-circle-check me-1"></i>หลังทำ</span>
+                                            </div>
+                                        {% elif p.after_image %}
+                                            <div class="col-12 position-relative">
+                                                <img src="{{ p.after_image }}" class="w-100" style="height: 170px; object-fit: cover;" alt="Showcase" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&auto=format&fit=crop&q=80'">
+                                                <span class="badge bg-success position-absolute top-0 end-0 m-2 small shadow-sm"><i class="fa-solid fa-star me-1"></i>ผลงานสำเร็จ</span>
+                                            </div>
+                                        {% elif p.before_image %}
+                                            <div class="col-12 position-relative">
+                                                <img src="{{ p.before_image }}" class="w-100" style="height: 170px; object-fit: cover;" alt="Showcase" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80'">
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="p-3">
+                                        <div class="d-flex justify-content-between align-items-start mb-1">
+                                            <h6 class="fw-bold mb-0 text-dark">{{ p.title }}</h6>
+                                            <span class="badge bg-light text-secondary border small">{{ p.category_name }}</span>
+                                        </div>
+                                        {% if p.description %}
+                                            <p class="text-muted small mb-0">{{ p.description }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Services & Pricing Table -->
+            <div class="card-custom p-4 mb-4">
+                <h5 class="fw-bold mb-3"><i class="fa-solid fa-list-check me-2 text-primary"></i> ทักษะและอัตราค่าบริการเริ่มต้น</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ประเภทงาน / บริการ</th>
+                                <th class="text-end">ราคาเริ่มต้น</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in worker.services_list %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ s.category.category_name }}</div>
+                                        <small class="text-muted">{{ s.category.description|default:"" }}</small>
+                                    </td>
+                                    <td class="text-end fw-bold text-success fs-6">
+                                        ฿{{ s.starting_price|floatformat:2 }} <span class="text-muted fw-normal small">{{ s.price_unit|default:"/งาน" }}</span>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted py-3">ยังไม่ได้ระบุรายละเอียดราคา</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Service Areas -->
+            <div class="card-custom p-4 mb-4">
+                <h5 class="fw-bold mb-3"><i class="fa-solid fa-location-dot me-2 text-danger"></i> พื้นที่ให้บริการ</h5>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for area in worker.service_areas_list %}
+                        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill font-normal">
+                            <i class="fa-solid fa-map-pin text-primary me-1"></i> {{ area.province.province_name }}
+                        </span>
+                    {% empty %}
+                        <span class="text-muted">ยินดีให้บริการทุกพื้นที่</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Reviews Section -->
+            <div class="card-custom p-4 mb-4" id="reviews-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0"><i class="fa-solid fa-star me-2 text-warning"></i> รีวิวจากลูกค้า ({{ total_reviews }})</h5>
+                    {% if user.is_authenticated and user != worker.user %}
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#reviewModal">
+                            <i class="fa-solid fa-pen me-1"></i> เขียนรีวิว
+                        </button>
+                    {% endif %}
+                </div>
+
+                <!-- Rating Breakdown -->
+                {% if total_reviews > 0 %}
+                    <div class="row align-items-center mb-4 bg-light p-3 rounded-4">
+                        <div class="col-md-4 text-center border-end">
+                            <div class="display-4 fw-bold text-dark">{{ worker.average_rating }}</div>
+                            <div class="star-rating fs-5 mb-1">
+                                <i class="fa-solid fa-star text-warning"></i>
+                            </div>
+                            <small class="text-muted">จากทั้งหมด {{ total_reviews }} รีวิว</small>
+                        </div>
+                        <div class="col-md-8 ps-md-4">
+                            {% for star, count in rating_counts.items %}
+                                <div class="d-flex align-items-center gap-2 mb-1 small">
+                                    <span style="width: 45px;">{{ star }} ดาว</span>
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar bg-warning" style="width: {{ rating_percentages|default_if_none:0 }}%;"></div>
+                                    </div>
+                                    <span class="text-muted" style="width: 30px;">{{ count }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Review Items List -->
+                <div class="d-flex flex-column gap-3">
+                    {% for rev in reviews %}
+                        <div class="border-bottom pb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="fw-bold text-dark">{{ rev.customer.full_name }}</div>
+                                <small class="text-muted">{{ rev.created_at|date:"d M Y H:i" }}</small>
+                            </div>
+                            <div class="star-rating small mb-2">
+                                {% for i in "12345"|make_list %}
+                                    <i class="fa-solid fa-star {% if forloop.counter <= rev.rating %}text-warning{% else %}text-muted opacity-25{% endif %}"></i>
+                                {% endfor %}
+                            </div>
+                            <p class="text-muted small mb-2">{{ rev.comment|default:"ไม่มีข้อความเพิ่มเติม" }}</p>
+
+                            <!-- Worker Reply -->
+                            {% if rev.worker_reply %}
+                                <div class="bg-primary-subtle p-3 rounded-3 ms-4 small mt-2 border-start border-primary border-3">
+                                    <div class="fw-bold text-primary mb-1">
+                                        <i class="fa-solid fa-reply me-1"></i> การตอบกลับจากช่าง {{ worker.user.full_name }}
+                                        <span class="text-muted fw-normal float-end" style="font-size: 0.75rem;">{{ rev.worker_replied_at|date:"d M Y" }}</span>
+                                    </div>
+                                    <div class="text-dark">{{ rev.worker_reply }}</div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-4 text-muted small bg-light rounded-4">
+                            <i class="fa-regular fa-comment-dots fs-3 text-secondary opacity-50 mb-2"></i>
+                            <div>ยังไม่มีรีวิวสำหรับช่างคนนี้ ร่วมเป็นคนแรกที่รีวิวหลังรับบริการได้เลย!</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Booking Form Right Column (Or Profile View for Worker) -->
+        <div class="col-lg-4" id="booking-section">
+            {% if user.is_authenticated and user.is_worker and user == worker.user %}
+                <div class="card-custom p-4 sticky-top shadow-sm border border-primary border-opacity-25" style="top: 90px;">
+                    <div class="text-center py-3">
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary mb-3" style="width: 60px; height: 60px; font-size: 1.8rem;">
+                            <i class="fa-solid fa-id-badge"></i>
+                        </div>
+                        <h5 class="fw-bold text-dark mb-1">หน้าโปรไฟล์สาธารณะของคุณ</h5>
+                        <p class="text-muted small mb-4">นี่คือมุมมองที่ลูกค้าและผู้ค้นหาช่างมองเห็นโปรไฟล์ของคุณ</p>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'workers:edit_profile' %}" class="btn btn-warning rounded-pill py-2 fw-semibold text-dark shadow-sm">
+                                <i class="fa-solid fa-pen-to-square me-1"></i> แก้ไขข้อมูลและบริการ
+                            </a>
+                            <a href="{% url 'dashboard:worker_dashboard' %}" class="btn btn-outline-primary rounded-pill py-2">
+                                <i class="fa-solid fa-briefcase me-1"></i> ไปยังแดชบอร์ดช่าง
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% elif user.is_authenticated and user.is_worker %}
+                <div class="card-custom p-4 sticky-top shadow-sm border" style="top: 90px;">
+                    <div class="text-center py-3">
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-secondary bg-opacity-10 text-secondary mb-3" style="width: 60px; height: 60px; font-size: 1.8rem;">
+                            <i class="fa-solid fa-user-shield"></i>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-2">บัญชีของคุณคือช่างรับจ้าง</h6>
+                        <p class="text-muted small mb-3">คุณกำลังเข้าชมโปรไฟล์ของเพื่อนร่วมอาชีพ (บัญชีช่างไม่สามารถส่งคำขอจองบริการหรือกดบันทึกช่างได้)</p>
+                        <a href="{% url 'dashboard:worker_dashboard' %}" class="btn btn-outline-primary rounded-pill w-100 py-2">
+                            <i class="fa-solid fa-arrow-left me-1"></i> กลับแดชบอร์ดช่าง
+                        </a>
+                    </div>
+                </div>
+            {% else %}
+                <div class="card-custom p-4 sticky-top shadow-lg border-primary border-opacity-25" style="top: 90px;">
+                    <h5 class="fw-bold mb-1 text-primary"><i class="fa-solid fa-calendar-check me-2"></i> ขอรับบริการงานช่าง</h5>
+                    <p class="text-muted small mb-3">ส่งคำขอจ้างงาน รายละเอียด และรูปถ่ายหน้างาน</p>
+
+                    {% if user.is_authenticated %}
+                        <form method="POST" action="{% url 'bookings:create' worker.id %}" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label small fw-semibold mb-0">เลือกประเภทงานที่ต้องการ <span class="text-danger">*</span></label>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary border-opacity-25 rounded-pill" style="font-size: 0.7rem;">
+                                        <i class="fa-solid fa-layer-group me-1"></i> เลือกได้มากกว่า 1 งาน
+                                    </span>
+                                </div>
+                                <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">ติ๊กเลือกประเภทงานที่ต้องการให้ช่างทำพร้อมกัน</small>
+
+                                <div class="d-flex flex-column gap-2" id="categoryCheckboxesGroup">
+                                    {% for s in worker.services_list %}
+                                        <label class="d-flex align-items-center justify-content-between p-2 px-3 rounded-3 border bg-white cursor-pointer service-checkbox-card" style="cursor: pointer; transition: all 0.2s;" for="cat_check_{{ s.category.id }}">
+                                            <div class="form-check mb-0">
+                                                <input class="form-check-input service-check-input" type="checkbox" name="category_ids" value="{{ s.category.id }}" id="cat_check_{{ s.category.id }}" data-price="{{ s.starting_price }}">
+                                                <span class="form-check-label fw-semibold text-dark ms-1 small" for="cat_check_{{ s.category.id }}">
+                                                    {{ s.category.category_name }}
+                                                </span>
+                                            </div>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary border-opacity-25 rounded-pill small">
+                                                เริ่ม ฿{{ s.starting_price|floatformat:0 }}
+                                            </span>
+                                        </label>
+                                    {% empty %}
+                                        {% for cat in global_categories %}
+                                            <label class="d-flex align-items-center justify-content-between p-2 px-3 rounded-3 border bg-white cursor-pointer" style="cursor: pointer;" for="cat_check_{{ cat.id }}">
+                                                <div class="form-check mb-0">
+                                                    <input class="form-check-input service-check-input" type="checkbox" name="category_ids" value="{{ cat.id }}" id="cat_check_{{ cat.id }}" data-price="0">
+                                                    <span class="form-check-label fw-semibold text-dark ms-1 small" for="cat_check_{{ cat.id }}">
+                                                        {{ cat.category_name }}
+                                                    </span>
+                                                </div>
+                                            </label>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </div>
+
+                                <!-- Dynamic Multi-selection Price Summary -->
+                                <div id="selectedServicesSummary" class="mt-2 p-2 px-3 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25 d-none">
+                                    <div class="d-flex justify-content-between align-items-center small">
+                                        <span class="text-success fw-semibold"><i class="fa-solid fa-check-double me-1"></i> เลือกแล้ว <span id="selectedCount">0</span> ประเภทงาน</span>
+                                        <strong class="text-success" id="estimatedTotalWrapper">ประเมินเริ่มต้น: ฿<span id="estimatedTotal">0</span></strong>
+                                    </div>
+                                </div>
+                                <div id="categoryRequiredAlert" class="text-danger small mt-1 d-none">
+                                    <i class="fa-solid fa-circle-exclamation me-1"></i> กรุณาเลือกประเภทงานอย่างน้อย 1 อย่าง
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">วันที่สะดวกรับบริการ</label>
+                                    <input type="date" name="preferred_date" class="form-control rounded-3">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">ช่วงเวลาที่สะดวก</label>
+                                    <select name="preferred_time_slot" class="form-select rounded-3">
+                                        <option value="ANY">ทุกช่วงเวลา</option>
+                                        <option value="MORNING">ช่วงเช้า (08:00 - 12:00)</option>
+                                        <option value="AFTERNOON">ช่วงบ่าย (13:00 - 17:00)</option>
+                                        <option value="EVENING">ช่วงเย็น (17:00 - 20:00)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">สถานที่ / ที่อยู่ปฏิบัติงาน <span class="text-danger">*</span></label>
+                                <input type="text" name="address_note" class="form-control rounded-3" placeholder="เช่น ซอย, หมู่บ้าน, เขต/อำเภอ" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">รายละเอียดงานที่ต้องการซ่อม/ติดตั้ง <span class="text-danger">*</span></label>
+                                <textarea name="details" class="form-control rounded-3" rows="3" placeholder="อธิบายอาการเสีย หรือจุดที่ต้องการให้ช่างเข้ามาทำ..." required></textarea>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label small fw-semibold"><i class="fa-solid fa-camera text-primary me-1"></i> แนบรูปถ่ายจุดที่ชำรุด / หน้างาน (ถ้ามี)</label>
+                                <input type="file" name="problem_image" accept="image/*" class="form-control rounded-3">
+                                <small class="text-muted" style="font-size: 0.75rem;">ช่วยให้ช่างประเมินอาการและจัดเตรียมอุปกรณ์ได้แม่นยำ</small>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary-custom w-100 rounded-pill py-2 fw-semibold">
+                                <i class="fa-solid fa-paper-plane me-1"></i> ยืนยันการส่งคำขอรับบริการ
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fa-solid fa-lock text-muted fs-1 mb-3"></i>
+                            <p class="small text-muted mb-3">กรุณาเข้าสู่ระบบก่อนทำการส่งคำขอจ้างงาน</p>
+                            <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-primary-custom rounded-pill w-100 mb-2">
+                                เข้าสู่ระบบเพื่อจ้างงาน
+                            </a>
+                            <a href="{% url 'accounts:register' %}" class="small text-muted text-decoration-none">ยังไม่มีบัญชี? สมัครสมาชิก</a>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Report Problem -->
+<div class="modal fade" id="reportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-flag me-2"></i>รายงานปัญหาเกี่ยวกับช่างคนนี้</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'reports:create' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="worker_id" value="{{ worker.id }}">
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">หากพบข้อมูลที่ไม่เป็นความจริง พฤติกรรมไม่เหมาะสม ไม่มาทำงาน หรือการคิดราคาเกินจริง กรุณาแจ้งให้ทีมงานตรวจสอบ</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ระบุรายละเอียดปัญหาที่พบ <span class="text-danger">*</span></label>
+                        <textarea name="reason" rows="4" class="form-control rounded-3" placeholder="อธิบายปัญหาที่เกิดขึ้นโดยละเอียด..." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small d-flex align-items-center justify-content-between">
+                            <span><i class="fa-solid fa-paperclip me-1 text-primary"></i> แนบรูปถ่ายหลักฐาน <span class="text-muted fw-normal">(ถ้ามี)</span></span>
+                            <span class="text-muted" style="font-size: 0.75rem;">รองรับ JPG, PNG สูงสุด 5MB</span>
+                        </label>
+                        <input type="file" name="evidence_image" class="form-control rounded-3" accept="image/*">
+                        <div class="form-text small text-muted">เช่น ภาพถ่ายหน้างานที่เสียหาย, แชทการตกลงราคา, หรือสลิปการโอนเงิน</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4">
+                        <i class="fa-solid fa-flag me-1"></i> ส่งรายงานปัญหา
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Write Review -->
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-warning"><i class="fa-solid fa-star me-2"></i>ให้คะแนนและรีวิวช่าง</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'reviews:create' worker.id %}">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3 text-center">
+                        <label class="form-label fw-semibold small d-block mb-2">ให้คะแนนความพึงพอใจ</label>
+                        <select name="rating" class="form-select w-50 mx-auto rounded-pill text-center fw-bold">
+                            <option value="5">⭐⭐⭐⭐⭐ (5 ดาว - ยอดเยี่ยม)</option>
+                            <option value="4">⭐⭐⭐⭐ (4 ดาว - ดีมาก)</option>
+                            <option value="3">⭐⭐⭐ (3 ดาว - พอใช้)</option>
+                            <option value="2">⭐⭐ (2 ดาว - ต้องปรับปรุง)</option>
+                            <option value="1">⭐ (1 ดาว - แย่มาก)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ความคิดเห็น / ความประทับใจ</label>
+                        <textarea name="comment" rows="3" class="form-control rounded-3" placeholder="อธิบายคุณภาพงาน ความตรงต่อเวลา ความสุภาพ..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary-custom rounded-pill px-4">ส่งรีวิว</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkInputs = document.querySelectorAll('.service-check-input');
+    const summaryBox = document.getElementById('selectedServicesSummary');
+    const selectedCountSpan = document.getElementById('selectedCount');
+    const estimatedTotalSpan = document.getElementById('estimatedTotal');
+    const alertBox = document.getElementById('categoryRequiredAlert');
+    const bookingForm = document.querySelector('#booking-section form');
+
+    function updateServiceSelection() {
+        let count = 0;
+        let total = 0;
+
+        checkInputs.forEach(input => {
+            const card = input.closest('.service-checkbox-card');
+            if (input.checked) {
+                count++;
+                total += parseFloat(input.dataset.price || 0);
+                if (card) {
+                    card.classList.add('border-primary', 'bg-primary-subtle', 'bg-opacity-10');
+                    card.classList.remove('bg-white');
+                }
+            } else {
+                if (card) {
+                    card.classList.remove('border-primary', 'bg-primary-subtle', 'bg-opacity-10');
+                    card.classList.add('bg-white');
+                }
+            }
+        });
+
+        if (count > 0) {
+            if (summaryBox) summaryBox.classList.remove('d-none');
+            if (selectedCountSpan) selectedCountSpan.textContent = count;
+            if (estimatedTotalSpan) estimatedTotalSpan.textContent = total.toLocaleString();
+            if (alertBox) alertBox.classList.add('d-none');
+        } else {
+            if (summaryBox) summaryBox.classList.add('d-none');
+        }
+    }
+
+    checkInputs.forEach(input => {
+        input.addEventListener('change', updateServiceSelection);
+    });
+
+    if (bookingForm) {
+        bookingForm.addEventListener('submit', function(e) {
+            let checkedAny = false;
+            checkInputs.forEach(input => {
+                if (input.checked) checkedAny = true;
+            });
+            if (!checkedAny) {
+                e.preventDefault();
+                if (alertBox) {
+                    alertBox.classList.remove('d-none');
+                    alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

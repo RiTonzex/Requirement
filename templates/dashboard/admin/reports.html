@@ -1,0 +1,284 @@
+{% extends 'dashboard/admin/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i>รายงานปัญหาและพฤติกรรมไม่เหมาะสม</h3>
+        <p class="text-muted small mb-0">ตรวจสอบข้อร้องเรียน ดูรูปหลักฐาน แจ้งข้อความเตือนไปยังช่าง หรือสั่งระงับบัญชีที่ทำผิดกฎ</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="?status=ALL" class="btn btn-sm rounded-pill px-3 {% if status_filter == 'ALL' %}btn-dark{% else %}btn-outline-secondary{% endif %}">ทั้งหมด</a>
+        <a href="?status=PENDING" class="btn btn-sm rounded-pill px-3 {% if status_filter == 'PENDING' %}btn-warning text-dark fw-bold{% else %}btn-outline-warning text-dark{% endif %}">รอตรวจสอบ</a>
+        <a href="?status=RESOLVED" class="btn btn-sm rounded-pill px-3 {% if status_filter == 'RESOLVED' %}btn-success{% else %}btn-outline-success{% endif %}">ดำเนินการแล้ว</a>
+        <a href="?status=DISMISSED" class="btn btn-sm rounded-pill px-3 {% if status_filter == 'DISMISSED' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">ยกเลิก/ไม่พบความผิด</a>
+    </div>
+</div>
+
+<div class="card-custom p-4 bg-white shadow-sm border-0 rounded-4 mb-4">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 70px;">รหัส</th>
+                    <th>ผู้รายงาน</th>
+                    <th>ช่าง / ผู้ใช้ที่ถูกรายงาน</th>
+                    <th>รายละเอียด & หลักฐาน</th>
+                    <th>สถานะรายงาน</th>
+                    <th>บันทึกของผู้ดูแลระบบ</th>
+                    <th>วันที่แจ้ง</th>
+                    <th class="text-end" style="min-width: 140px;">การจัดการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reports %}
+                    <tr>
+                        <td><strong class="text-secondary">#{{ r.id }}</strong></td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ r.reporter.full_name }}</div>
+                            <small class="text-muted d-block">{{ r.reporter.email }}</small>
+                            <small class="text-muted">{{ r.reporter.phone_number|default:"-" }}</small>
+                        </td>
+                        <td>
+                            {% if r.reported_worker %}
+                                <div class="d-flex align-items-center gap-2">
+                                    <div>
+                                        <a href="{% url 'workers:detail' r.reported_worker.id %}" target="_blank" class="fw-bold text-primary text-decoration-none">
+                                            {{ r.reported_worker.user.full_name }}
+                                        </a>
+                                        <div class="small mt-1">
+                                            {% if r.reported_worker.status == 'APPROVED' %}
+                                                <span class="badge bg-success-subtle text-success border border-success border-opacity-25 rounded-pill"><i class="fa-solid fa-circle-check me-1"></i>อนุมัติแล้ว</span>
+                                            {% elif r.reported_worker.status == 'SUSPENDED' %}
+                                                <span class="badge bg-danger-subtle text-danger border border-danger border-opacity-25 rounded-pill"><i class="fa-solid fa-ban me-1"></i>ถูกระงับบัญชี</span>
+                                            {% elif r.reported_worker.status == 'PENDING' %}
+                                                <span class="badge bg-warning-subtle text-warning border border-warning border-opacity-25 rounded-pill"><i class="fa-solid fa-clock me-1"></i>รอตรวจสอบ</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary-subtle text-secondary rounded-pill">{{ r.reported_worker.get_status_display }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% elif r.reported_user %}
+                                <div class="fw-bold">{{ r.reported_user.full_name }}</div>
+                                <span class="badge bg-light text-dark border">ลูกค้า</span>
+                            {% else %}
+                                <span class="text-muted fst-italic">ไม่ระบุ</span>
+                            {% endif %}
+                        </td>
+                        <td class="small" style="max-width: 250px;">
+                            <div class="p-2 bg-light rounded-3 text-secondary text-break border mb-1">
+                                {{ r.reason }}
+                            </div>
+                            {% if r.evidence_image %}
+                                <a href="javascript:void(0)" class="badge bg-primary-subtle text-primary border border-primary border-opacity-25 text-decoration-none rounded-pill" data-bs-toggle="modal" data-bs-target="#manageReportModal{{ r.id }}">
+                                    <i class="fa-solid fa-image me-1"></i> มีรูปหลักฐานแนบ
+                                </a>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-muted rounded-pill" style="font-size: 0.7rem;">ไม่มีรูปแนบ</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if r.status == 'PENDING' %}
+                                <span class="badge bg-warning text-dark px-2 py-1 rounded-pill"><i class="fa-solid fa-clock me-1"></i>รอตรวจสอบ</span>
+                            {% elif r.status == 'RESOLVED' %}
+                                <span class="badge bg-success px-2 py-1 rounded-pill"><i class="fa-solid fa-check me-1"></i>ดำเนินการแล้ว</span>
+                            {% elif r.status == 'DISMISSED' %}
+                                <span class="badge bg-secondary px-2 py-1 rounded-pill"><i class="fa-solid fa-xmark me-1"></i>ยกเลิกรายงาน</span>
+                            {% endif %}
+                        </td>
+                        <td class="small" style="max-width: 180px;">
+                            {% if r.admin_notes %}
+                                <span class="text-dark d-inline-block text-truncate" style="max-width: 170px;" title="{{ r.admin_notes }}">
+                                    {{ r.admin_notes }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted fst-italic">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted text-nowrap">{{ r.created_at|date:"d M Y H:i" }}</td>
+                        <td class="text-end">
+                            <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#manageReportModal{{ r.id }}">
+                                <i class="fa-solid fa-gear me-1"></i> จัดการ / เตือน
+                            </button>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="fa-regular fa-folder-open fs-3 d-block mb-2 text-secondary opacity-50"></i>
+                            ไม่พบรายงานปัญหาตามเงื่อนไขที่เลือก
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODALS PLACED OUTSIDE TABLE (PREVENTS FLICKER) -->
+<!-- ========================================== -->
+{% for r in reports %}
+    <div class="modal fade text-start" id="manageReportModal{{ r.id }}" tabindex="-1" aria-labelledby="manageReportModalLabel{{ r.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom bg-light rounded-top-4">
+                    <h5 class="modal-title fw-bold" id="manageReportModalLabel{{ r.id }}">
+                        <i class="fa-solid fa-shield-halved text-primary me-2"></i>จัดการรายงานปัญหา #{{ r.id }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- ข้อมูลสรุปของรายงาน -->
+                    <div class="card p-3 bg-light border-0 rounded-3 mb-4">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block">ผู้แจ้งปัญหา:</small>
+                                <strong class="text-dark">{{ r.reporter.full_name }} ({{ r.reporter.email }})</strong>
+                                <div class="small text-muted">{{ r.reporter.phone_number|default:"-" }}</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block">ผู้ถูกรายงาน:</small>
+                                <strong class="text-dark">
+                                    {% if r.reported_worker %}
+                                        {{ r.reported_worker.user.full_name }} (ช่างรับจ้าง)
+                                        {% if r.reported_worker.status == 'SUSPENDED' %}
+                                            <span class="badge bg-danger ms-1">ถูกระงับบัญชีอยู่</span>
+                                        {% elif r.reported_worker.status == 'APPROVED' %}
+                                            <span class="badge bg-success ms-1">ใช้งานปกติ</span>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ r.reported_user.full_name|default:"ไม่ระบุ" }}
+                                    {% endif %}
+                                </strong>
+                                <div class="small text-muted">แจ้งเมื่อ: {{ r.created_at|date:"d F Y เวลา H:i น." }}</div>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted d-block">รายละเอียดข้อร้องเรียนจากผู้ใช้:</small>
+                                <div class="p-3 bg-white rounded-3 border mt-1 text-danger-emphasis">
+                                    {{ r.reason }}
+                                </div>
+                            </div>
+
+                            <!-- ส่วนแสดงรูปภาพแนบหลักฐาน (Evidence Image) -->
+                            <div class="col-12">
+                                <small class="text-muted d-block fw-semibold mb-1">
+                                    <i class="fa-solid fa-camera me-1 text-primary"></i> รูปถ่ายหลักฐานที่แนบมา:
+                                </small>
+                                {% if r.evidence_image %}
+                                    <div class="p-2 bg-white rounded-3 border d-inline-block text-center">
+                                        <a href="{{ r.display_evidence_url }}" target="_blank" title="คลิกเพื่อดูรูปภาพขนาดเต็ม">
+                                            <img src="{{ r.display_evidence_url }}" alt="หลักฐานรายงานปัญหา #{{ r.id }}" class="img-fluid rounded-3 border" style="max-height: 240px; object-fit: contain;">
+                                        </a>
+                                        <div class="mt-1">
+                                            <a href="{{ r.display_evidence_url }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1" style="font-size: 0.75rem;">
+                                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> เปิดดูรูปภาพขนาดเต็ม
+                                            </a>
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <div class="p-2 bg-white rounded-3 border text-muted small fst-italic">
+                                        <i class="fa-regular fa-image me-1"></i> ผู้ใช้ไม่ได้แนบรูปถ่ายหลักฐานในรายงานนี้
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            {% if r.admin_notes %}
+                                <div class="col-12">
+                                    <small class="text-muted d-block">ประวัติการดำเนินการเดิม:</small>
+                                    <div class="p-2 bg-white rounded-3 border mt-1 small text-muted">
+                                        {{ r.admin_notes|linebreaksbr }}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold mb-3 text-secondary"><i class="fa-solid fa-bolt me-2"></i>เลือกการดำเนินการต่อรายงานนี้:</h6>
+
+                    <!-- 1. การส่งแจ้งเตือน (Send Warning) -->
+                    <div class="border rounded-3 p-3 mb-3 bg-white shadow-xs">
+                        <strong class="text-warning-emphasis d-block mb-2">
+                            <i class="fa-solid fa-bell me-1 text-warning"></i> 1. ส่งข้อความแจ้งเตือนไปยังบัญชีช่าง/ผู้ใช้
+                        </strong>
+                        <form method="POST" action="{% url 'reports:resolve' r.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="WARN">
+                            <div class="mb-2">
+                                <textarea name="warning_message" class="form-control form-control-sm" rows="2" placeholder="กรอกข้อความแจ้งเตือนถึงช่าง...">ผู้ดูแลระบบได้รับรายงานปัญหาเกี่ยวกับพฤติกรรมหรือบริการของคุณ (รายงาน #{{ r.id }}: {{ r.reason }}) กรุณาปรับปรุงการให้บริการและปฏิบัติตามกฎระเบียบของระบบอย่างเคร่งครัด</textarea>
+                            </div>
+                            <button type="submit" class="btn btn-warning btn-sm rounded-pill px-3 fw-semibold">
+                                <i class="fa-solid fa-paper-plane me-1"></i> ส่งข้อความเตือนไปยังช่าง
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- 2. การระงับบัญชีช่าง (Suspend Account) -->
+                    {% if r.reported_worker %}
+                        <div class="border rounded-3 p-3 mb-3 bg-white shadow-xs">
+                            <strong class="text-danger d-block mb-2">
+                                <i class="fa-solid fa-ban me-1"></i> 2. การจัดการสถานะบัญชีช่าง (ระงับ / ปลดระงับ)
+                            </strong>
+                            {% if r.reported_worker.status != 'SUSPENDED' %}
+                                <form method="POST" action="{% url 'reports:resolve' r.id %}" onsubmit="return confirm('คุณแน่ใจหรือไม่ว่าต้องการระงับบัญชีช่างคนนี้? ช่างจะไม่ปรากฏในผลค้นหาและไม่สามารถรับงานได้');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="SUSPEND">
+                                    <div class="mb-2">
+                                        <input type="text" name="suspend_reason" class="form-control form-control-sm" value="ระงับการใช้งานเนื่องจากรายงานปัญหา #{{ r.id }}: {{ r.reason }}" placeholder="ระบุเหตุผลการระงับบัญชี">
+                                    </div>
+                                    <button type="submit" class="btn btn-danger btn-sm rounded-pill px-3">
+                                        <i class="fa-solid fa-user-slash me-1"></i> สั่งระงับบัญชีช่างทันที (Suspend)
+                                    </button>
+                                </form>
+                            {% else %}
+                                <div class="alert alert-danger py-2 px-3 small mb-2">
+                                    <i class="fa-solid fa-circle-exclamation me-1"></i> บัญชีช่างคนนี้อยู่ในสถานะ <strong>ถูกระงับการใช้งานอยู่แล้ว</strong>
+                                </div>
+                                <form method="POST" action="{% url 'reports:resolve' r.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="RESTORE">
+                                    <button type="submit" class="btn btn-success btn-sm rounded-pill px-3">
+                                        <i class="fa-solid fa-user-check me-1"></i> ปลดระงับและเปิดใช้งานบัญชีช่าง (Restore)
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    <!-- 3. อัปเดตสถานะรายงานและบันทึกผล (Resolve / Dismiss) -->
+                    <div class="border rounded-3 p-3 bg-white shadow-xs">
+                        <strong class="text-dark d-block mb-2">
+                            <i class="fa-solid fa-clipboard-check me-1 text-primary"></i> 3. บันทึกผลการตรวจสอบและอัปเดตสถานะรายงาน
+                        </strong>
+                        <form method="POST" action="{% url 'reports:resolve' r.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="UPDATE_STATUS">
+                            <div class="row g-2 mb-2">
+                                <div class="col-sm-6">
+                                    <label class="small text-muted">สถานะรายงาน:</label>
+                                    <select name="status" class="form-select form-select-sm">
+                                        <option value="RESOLVED" {% if r.status == 'RESOLVED' %}selected{% endif %}>ดำเนินการเรียบร้อย (Resolved)</option>
+                                        <option value="DISMISSED" {% if r.status == 'DISMISSED' %}selected{% endif %}>ยกเลิก / ไม่พบความผิด (Dismissed)</option>
+                                        <option value="PENDING" {% if r.status == 'PENDING' %}selected{% endif %}>ยังคงรอตรวจสอบ (Pending)</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-12">
+                                    <label class="small text-muted">บันทึกช่วยจำของผู้ดูแลระบบ (Admin Notes):</label>
+                                    <textarea name="admin_notes" class="form-control form-control-sm" rows="2" placeholder="กรอกข้อความบันทึกช่วยจำ..."></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">
+                                <i class="fa-solid fa-floppy-disk me-1"></i> บันทึกผลการตรวจสอบ
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="modal-footer border-top bg-light">
+                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endfor %}
+
+{% endblock %}
