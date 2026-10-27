@@ -104,14 +104,14 @@
 
 
                     <!-- 3. Services & Starting Prices with Units -->
-                    <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-wrench me-2 text-primary"></i> 3. หมวดหมู่งานที่รับบริการ และราคาเริ่มต้น</h5>
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-wrench me-2 text-primary"></i> 3. หมวดหมู่งานที่รับบริการ และราคาเริ่มต้น</h5>
                     <div class="row g-3 mb-4">
                         {% for cat in all_categories %}
                             <div class="col-md-6">
-                                <div class="p-3 border rounded-3 bg-light h-100">
+                                <div class="p-3 border rounded-3 h-100" style="background: var(--bg-surface); border-color: var(--border-color) !important;">
                                     <div class="form-check mb-2">
                                         <input class="form-check-input" type="checkbox" name="categories" value="{{ cat.id }}" id="cat_{{ cat.id }}" {% if cat.id in current_services %}checked{% endif %}>
-                                        <label class="form-check-label fw-bold small text-dark" for="cat_{{ cat.id }}">
+                                        <label class="form-check-label fw-bold small text-white" for="cat_{{ cat.id }}">
                                             <i class="fa-solid {{ cat.icon|default:'fa-wrench' }} me-1 text-primary"></i> {{ cat.category_name }}
                                         </label>
                                     </div>
@@ -140,13 +140,13 @@
                     </div>
 
                     <!-- 4. Service Areas -->
-                    <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-map-location-dot me-2 text-primary"></i> 4. จังหวัดที่สะดวกให้บริการ (เลือกได้หลายจังหวัด)</h5>
-                    <div class="row row-cols-2 row-cols-md-4 g-2 mb-4" style="max-height: 280px; overflow-y: auto; border: 1px solid #e2e8f0; padding: 12px; border-radius: 12px; background: #fafafa;">
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-map-location-dot me-2 text-primary"></i> 4. จังหวัดที่สะดวกให้บริการ (เลือกได้หลายจังหวัด)</h5>
+                    <div class="row row-cols-2 row-cols-md-4 g-2 mb-4 p-3 rounded-3" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border-color); background: var(--bg-surface);">
                         {% for prov in all_provinces %}
                             <div class="col">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="provinces" value="{{ prov.id }}" id="prov_{{ prov.id }}" {% if prov.id in current_provinces %}checked{% endif %}>
-                                    <label class="form-check-label small" for="prov_{{ prov.id }}">
+                                <div class="form-check p-2 rounded-2" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05);">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="provinces" value="{{ prov.id }}" id="prov_{{ prov.id }}" {% if prov.id in current_provinces %}checked{% endif %}>
+                                    <label class="form-check-label small text-white" for="prov_{{ prov.id }}">
                                         {{ prov.province_name }}
                                     </label>
                                 </div>
