@@ -1,10 +1,20 @@
+from django.core.cache import cache
 from core.models import Category, Province, Notification
+
+CACHE_TIMEOUT = 3600  # 1 hour
 
 
 def global_context(request):
     try:
-        categories = list(Category.objects.filter(is_active=True).order_by('category_name'))
-        provinces = list(Province.objects.all().order_by('province_name'))
+        categories = cache.get('global_categories')
+        if categories is None:
+            categories = list(Category.objects.filter(is_active=True).order_by('category_name'))
+            cache.set('global_categories', categories, CACHE_TIMEOUT)
+
+        provinces = cache.get('global_provinces')
+        if provinces is None:
+            provinces = list(Province.objects.all().order_by('province_name'))
+            cache.set('global_provinces', provinces, CACHE_TIMEOUT)
         
         saved_worker_ids = []
         unread_notifications_count = 0
