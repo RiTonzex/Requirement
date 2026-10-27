@@ -165,6 +165,11 @@ def update_booking_status_view(request, booking_id):
     new_status = request.POST.get('status')
     valid_statuses = [choice[0] for choice in ServiceRequest.STATUS_CHOICES]
 
+    # อนุญาตให้เฉพาะช่างผู้รับงานเท่านั้นที่สามารถกด ตอบรับงาน, เริ่มปฏิบัติงาน, หรือแจ้งงานเสร็จสิ้น
+    if new_status in ['ACCEPTED', 'IN_PROGRESS', 'COMPLETED'] and not is_worker:
+        messages.error(request, "สิทธิ์ในการตอบรับและดำเนินงานนี้เป็นของช่างผู้รับงานเท่านั้น")
+        return redirect('bookings:detail', booking_id=booking.id)
+
     if new_status in valid_statuses:
         old_status_display = booking.get_status_display()
         booking.status = new_status
@@ -479,3 +484,27 @@ def sync_to_portfolio_view(request, booking_id):
         messages.error(request, f"เกิดข้อผิดพลาดในการบันทึกเข้า Portfolio: {e}")
 
     return redirect('bookings:detail', booking_id=booking.id)
+
+
+@login_required
+def chat_rooms_view(request):
+    """หน้ารวมห้องสนทนาทั้งหมดของผู้ใช้ (ทั้งลูกค้าและช่าง)"""
+    if request.user.is_worker and hasattr(request.user, 'worker_profile'):
+        bookings = ServiceRequest.objects.filter(worker=request.user.worker_profile)
+    else:
+        bookings = ServiceRequest.objects.filter(customer=request.user)
+
+    bookings = bookings.select_related('customer', 'worker__user', 'category').order_by('-created_at')
+
+    # รวมข้อมูลห้องแชท
+    chat_rooms = []
+    for b in bookings:
+        other = b.customer if (request.user.is_worker and hasattr(request.user, 'worker_profile') and b.worker.user == request.user) else b.worker.user
+        chat_rooms.append({
+            'booking': b,
+            'other_user': other,
+        })
+
+    return render(request, 'bookings/chat_rooms.html', {
+        'chat_rooms': chat_rooms,
+    })

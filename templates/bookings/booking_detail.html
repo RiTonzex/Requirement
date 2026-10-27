@@ -33,7 +33,7 @@
 
             <!-- Top Action Controls (NO SCROLLING NEEDED) -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                {% if is_worker or user.is_admin_user %}
+                {% if is_worker %}
                     {% if booking.status == 'REQUESTED' %}
                         <form method="POST" action="{% url 'bookings:update_status' booking.id %}" class="d-inline">
                             {% csrf_token %}

@@ -4,6 +4,7 @@ from . import views
 app_name = 'bookings'
 
 urlpatterns = [
+    path('chats/', views.chat_rooms_view, name='chat_rooms'),
     path('<int:booking_id>/', views.booking_detail_view, name='detail'),
     path('<int:booking_id>/invoice/', views.invoice_view, name='invoice'),
     path('<int:booking_id>/chat/', views.chat_view, name='chat'),

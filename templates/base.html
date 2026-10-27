@@ -84,6 +84,12 @@
                             </a>
                         {% endif %}
 
+                        <!-- Direct Chat Link -->
+                        <a href="{% url 'bookings:chat_rooms' %}" class="btn btn-outline-info btn-sm rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm" title="ข้อความสนทนาทั้งหมด">
+                            <i class="fa-solid fa-comments text-cyan"></i>
+                            <span class="d-none d-sm-inline">ข้อความ</span>
+                        </a>
+
                         <!-- Notification Bell Dropdown -->
                         <div class="dropdown">
                             <button class="btn btn-light position-relative rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="การแจ้งเตือน">
